@@ -1,7 +1,7 @@
 # —— Node ——
 node_modules/
 
-# —— WXT 构建产物 ——
+# —— WXT 构建产物（目录刻意非隐藏，便于在访达/Chrome 里选中；见 specs/20260913-m0-init D10）——
 .output/
 dist/
 

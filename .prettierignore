@@ -1,0 +1,6 @@
+.wxt
+.output
+coverage
+pnpm-lock.yaml
+# 中文产品文档长行为叙事文本，不做重排（质量门禁只管代码）
+*.md
