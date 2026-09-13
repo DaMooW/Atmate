@@ -25,7 +25,7 @@
 
 ## 2. 人工验收（roadmap M0 原文）
 
-- [x] Chrome 114+ 加载未打包扩展，**点击工具栏图标**能打开空 sidepanel（D8 修订后图标为主通道）— 2026-09-13 自动核验，见 §5
+- [x] Chrome 114+ 加载未打包扩展，**点击工具栏图标**能打开空 sidepanel（D8 修订后图标为主通道）— 2026-09-13 自动核验（见 §5），并已在**用户真实 Chrome** 中复验：扩展已安装、点击图标动作成功触发、侧边栏页面渲染正常（见 §5.1）
 - [x] 改代码 HMR 生效 — 2026-09-13 自动核验，见 §5
 - [x] 三条门禁命令全绿（含故意埋错被拦截的演示，见 plan 3.6）— 2026-09-13 完成
 
@@ -72,3 +72,34 @@
 |---|---|
 | `components/Sidebar.tsx`：`w-16` → `w-24` | 页面侧栏宽度**自动** 64px → 96px（未刷新页面） |
 | `entrypoints/background.ts` 改动 | dev 日志出现 `Changed: entrypoints/background.ts` → `Reloaded extension` |
+
+## 6. 通过 chrome-devtools MCP 在真实 Chrome 中核验（2026-09-13）
+
+装上 Chrome DevTools for agents 后，可以在用户真实 Chrome 里安装、重载、触发扩展并直接向 service worker 求值，无需临时实例。
+
+### 6.1 配置（`~/.codex/config.toml`）
+
+```toml
+[mcp_servers.chrome-devtools]
+command = "/usr/local/bin/npx"
+args = ["-y", "chrome-devtools-mcp@latest", "--categoryExtensions", "--autoConnect", "--workspace", "<仓库绝对路径>"]
+startup_timeout_sec = 120
+```
+
+**必须记住的坑：`--workspace` 不能省。** 该服务默认只允许访问系统临时目录——因为 Codex 作为 MCP 客户端未协商 MCP roots 能力，服务会退回"仅临时目录"的默认策略。少了这个参数，`install_extension` 会以"路径不在允许范围"失败（临时目录下的路径能过、项目路径全被拒，已实测）。`--workspace` 是 `--filesystem-root` 的别名、可重复传入；**改完 config 必须重启 Codex**，因为 MCP 进程在启动时就把参数固定了。
+
+### 6.2 核验结果（用户真实 Chrome）
+
+扩展 ID `hepclkbjnkopkmnhmgdabklemhnicabc`（未打包扩展 ID 由路径决定，对应 `dist/chrome-mv3`；与早期用 `.output/` 装载得到的 ID 不同，属正常）：
+
+| 检查项 | 结果 |
+|---|---|
+| 已安装 | ✅ `list_extensions` → 在伴 Atmate v0.1.0 Enabled |
+| service worker | ✅ `sw-2` 正在运行 |
+| manifest 图标与动作 | ✅ `icons` 与 `action.default_icon` 齐全，`action.default_title` = 在伴 Atmate |
+| 权限未扩张 | ✅ 仍为 `["sidePanel"]` |
+| 入口监听器 | ✅ `chrome.action.onClicked.hasListeners()` = true |
+| 图标点击（用户手势路径） | ✅ `trigger_extension_action` 成功触发，侧边栏被打开 |
+| 侧边栏页渲染 | ✅ 打开 `chrome-extension://<id>/sidepanel.html` 复核：标题"在伴 Atmate"、React 已挂载、侧栏 64px、深色 `--surface` 正常 |
+
+工具限制备查：`list_console_messages` 要求有效的 `pageId`，而 service worker 只有 `sw-N` 标识，因此**读不到 SW 控制台**；本次改用 `evaluate_script`（支持 `serviceWorkerId`）直接向 SW 求值替代。
