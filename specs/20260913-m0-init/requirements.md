@@ -30,6 +30,16 @@
 | D5 | pre-commit 用 simple-git-hooks + lint-staged（或等价轻量物）实现「本地 pre-commit 即可」 | roadmap T0.3 原文；不增 CI |
 | D6 | ESLint 只管代码质量，格式交 Prettier（eslint-config-prettier 结尾），避免规则打架 | tech §10 工程化约束 |
 | D7 | M0 的 manifest permsissions 只声明 `sidePanel`；其余权限随里程碑逐次追加 | 最小权限起步；tech §3 全量清单是终态 |
+| D8 | **spec 修订（2026-09-13，验收期发现）**：范围追加"侧边栏入口触发"——manifest 增 `action`，service worker 用 `chrome.action.onClicked` → `chrome.sidePanel.open({ windowId })` 打开面板 | 原范围只声明 `side_panel.default_path`，而"声明本身不等于可打开"：工具栏图标点不出面板，M0 验收"能看到空 sidepanel"实际要靠 Chrome 侧边栏自带下拉。依 roadmap §1「发现偏差先改 spec 再改码」补正；依据见 `chrome-extensions` 技能必守规则 2 / 11 |
+
+### 修订记录（验收期）
+
+- **2026-09-13 · D8 · 侧边栏入口触发**
+  - **问题**：`"side_panel": { "default_path": ... }` 不会让面板可打开，必须另有触发点（`chrome-extensions` 技能列为最常见的"扩展一上来就是坏的"原因之一）。
+  - **采取**：`wxt.config.ts` 的 manifest 增 `action: {}`；`entrypoints/background.ts` 注册 `chrome.action.onClicked` → `chrome.sidePanel.open({ windowId })`。
+  - **为何用 `action.onClicked` 而非 `setPanelBehavior`**：前者留出钩子，M1/M2 可在"打开面板"前后做落点判定（如无激活会话则新建），后者只是一行开关、无回调。
+  - **连带**：manifest 不声明 `default_popup`（否则 `action.onClicked` 不触发）；不新增任何**权限**——`action` 是 manifest 键而非权限，**D7 不变**。
+  - **影响文件**：`wxt.config.ts`、`entrypoints/background.ts`、本目录 `plan.md`（新增 1.6）、`validation.md`（新增核验项）。
 
 ## Context（背景与约束）
 

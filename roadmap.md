@@ -181,3 +181,4 @@
 | 2026-09-13 | — | v0.3：采纳图像输入（D-010）——FR-2.6/FR-4.6/FR-5.5/场景 E/S-5；插入新 M4（图像输入），原 M4/M5 顺延为 M5/M6 并重编号（T4.x→T5.x）；Q4/Q7 里程碑引用同步 |
 | 2026-09-13 | — | v0.4（评审定案）：定名"在伴 / Atmate"（Q1 已决，未联网查重、上架前自查）；素材落点默认当前会话·一键转新·无激活即新建（T2.4 重写）；M1 联调端点池五家入验收（含硅基流动 `org/model` 预填表收录）；M6 候选池增对照视图与一键直发（附"无黑箱"张力注记）；界面中英切换由候选升为承诺项（T6.1–T6.4，NFR-6 收紧，tech 选型 #10） |
 | 2026-09-13 | M0 | 工程初始化交付（T0.1–T0.5 全绿）：WXT 0.21 + React 18 + TS strict 脚手架，sidepanel/background/content 三入口（viewer、options 留桩）；Tailwind v4 语义 token（跟随系统深浅色，切换交互留后续）；门禁三件套接入 scripts + 本地 pre-commit（simple-git-hooks + lint-staged）；App/Sidebar/Main 空壳层级；`specs/` 模板与 README 落地。规格与验收：`specs/20260913-m0-init/` |
+| 2026-09-13 | M0 | spec 修订（验收期发现，D8）：追加"侧边栏入口触发"——manifest 增 `action`、background 注册 `action.onClicked` → `sidePanel.open({ windowId })`。原因：只声明 `side_panel.default_path` 并不会让面板可打开，"能看到空 sidepanel"此前只能靠 Chrome 侧边栏自带的下拉；不新增任何权限。明细见 `specs/20260913-m0-init/` 修订记录 |

@@ -18,10 +18,11 @@
 - **样式 token**（plan 2.4 / T0.2）：构建产物 CSS 中语义工具类已生效（`.bg-surface{background-color:var(--surface)}`、`.border-border{border-color:var(--line)}`），且 `prefers-color-scheme` 深浅两套变量均在位（`--bg:#f6f6f4` / `--bg:#101418`）。
 - **真实渲染**（plan 2.4）：在浏览器打开 dev 页面核验（地址 `http://localhost:3000/entrypoints/sidepanel/index.html`；注意 dev 服务器**根路径返回 404**，须带 entrypoint 路径）。结果：React 已挂载（`#root` 有 1 个子节点）；语义 token 生效——侧栏背景 `rgb(21,25,30)` 即 `--surface`、右边框 `rgb(61,68,77)` 即 `--line`、宽度 64px 即 `w-16`；`main` 为 flex 列。当前命中系统深色偏好（`prefersDark: true`，`--bg:#101418`）；浅色分支由同一套变量 + 媒体查询覆盖，两套值均已确认在产物 CSS 中。
 - **门禁演示**（plan 3.6）：临时植入 `any` + 未使用变量 + 类型不符的文件后，`typecheck` 报 `error TS2322`、`eslint` 报 2 处 error；删除探针文件后三条门禁恢复全绿。
+- **侧边栏入口**（D8）：产物 manifest 含 `"action": {}` 且**无** `default_popup`；`background.js` 中已注册 `action.onClicked` → `sidePanel.open({ windowId })`。
 
 ## 2. 人工验收（roadmap M0 原文）
 
-- [ ] Chrome 114+ 加载未打包扩展，能看到空 sidepanel
+- [ ] Chrome 114+ 加载未打包扩展，**点击工具栏图标**能打开空 sidepanel（D8 修订后图标为主通道；修订前只能从侧边栏自带的扩展下拉里选到）
 - [ ] 改代码 HMR 生效
 - [x] 三条门禁命令全绿（含故意埋错被拦截的演示，见 plan 3.6）— 2026-09-13 完成
 

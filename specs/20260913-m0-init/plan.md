@@ -13,6 +13,7 @@
 - [x] 1.3 manifest 生成核对：MV3、`minimum_chrome_version: 114`、permissions 仅 `sidePanel`（M0 阶段最小集，`storage`/`contextMenus` 等随对应里程碑追加）
 - [x] 1.4 依赖基线：React 18、zustand 预装（M1 即用）；无业务依赖
 - [x] 1.5 冒烟：`pnpm dev` 构建无报错；`.output/` 已入 `.gitignore`
+- [x] 1.6 侧边栏入口触发（spec 修订 2026-09-13 / D8）：manifest 增 `action: {}`（且不得有 `default_popup`）；`entrypoints/background.ts` 注册 `action.onClicked` → `sidePanel.open({ windowId })`，工具栏图标可直接打开空面板
 
 ## 2. Tailwind v4 接入与深浅色 token（对应 T0.2）
 
@@ -61,3 +62,7 @@
 - 构建：`pnpm build` → `.output/chrome-mv3`；manifest 核对通过（MV3 / `minimum_chrome_version: 114` / permissions 仅 `sidePanel`）。
 - dev：`pnpm dev` 正常启动（`http://localhost:3000` → `.output/chrome-mv3-dev`）。
 - 待人工核验：Chrome 加载未打包扩展与 HMR（步骤见 [validation.md §4](validation.md)）。
+
+### 验收期修订
+
+- **D8 · 侧边栏入口触发**（2026-09-13）：初版漏掉"声明 `side_panel` ≠ 面板可打开"这一条，验收时才发现工具栏图标点不出面板。已按「先改 spec 再改码」补正：见 [requirements.md](requirements.md) 修订记录、任务 1.6、[validation.md](validation.md) §1.1 与 §2。
