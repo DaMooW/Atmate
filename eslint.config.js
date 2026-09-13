@@ -19,5 +19,13 @@ export default defineConfig([
       'react-hooks/exhaustive-deps': 'warn',
     },
   },
+  {
+    // Node 侧脚本（scripts/、根目录 config）：显式声明用到的 Node 全局，
+    // 不为几个只读全局引入额外依赖（如 `globals` 包）。
+    files: ['scripts/**/*.{js,mjs}', '*.config.{js,mjs}'],
+    languageOptions: {
+      globals: { Buffer: 'readonly', console: 'readonly', process: 'readonly' },
+    },
+  },
   prettier,
 ]);

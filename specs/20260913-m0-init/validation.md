@@ -19,6 +19,7 @@
 - **真实渲染**（plan 2.4）：在浏览器打开 dev 页面核验（地址 `http://localhost:3000/entrypoints/sidepanel/index.html`；注意 dev 服务器**根路径返回 404**，须带 entrypoint 路径）。结果：React 已挂载（`#root` 有 1 个子节点）；语义 token 生效——侧栏背景 `rgb(21,25,30)` 即 `--surface`、右边框 `rgb(61,68,77)` 即 `--line`、宽度 64px 即 `w-16`；`main` 为 flex 列。当前命中系统深色偏好（`prefersDark: true`，`--bg:#101418`）；浅色分支由同一套变量 + 媒体查询覆盖，两套值均已确认在产物 CSS 中。
 - **门禁演示**（plan 3.6）：临时植入 `any` + 未使用变量 + 类型不符的文件后，`typecheck` 报 `error TS2322`、`eslint` 报 2 处 error；删除探针文件后三条门禁恢复全绿。
 - **侧边栏入口**（D8）：产物 manifest 含 `"action": {}` 且**无** `default_popup`；`background.js` 中已注册 `action.onClicked` → `sidePanel.open({ windowId })`。
+- **扩展图标**（D9）：`node scripts/generate-icons.mjs` 产出 16/32/48/128 真实 PNG（尺寸经 `sips -g pixelWidth/pixelHeight` 逐个核对）；产物含 `icon/*.png`（共 4.2 kB）；运行时 manifest 的 `icons` 与 `action.default_icon` 均指向它们、`action.default_title` = "在伴 Atmate"、权限仍为 `["sidePanel"]`；在 Chrome 中加载后取 `icon/16.png` 返回 `200 image/png`（证明图标路径可解析，非"只写路径不建文件"）。
 
 ## 2. 人工验收（roadmap M0 原文）
 

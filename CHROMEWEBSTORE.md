@@ -48,7 +48,7 @@ Chinese (Simplified)
 
 | Asset | Dimensions | Status | Filename |
 |-------|-----------|--------|----------|
-| Store Icon [REQUIRED] | 128×128 PNG | ⬜ Not created | |
+| Store Icon [REQUIRED] | 128×128 PNG | ✅ Ready | `public/icon/128.png`（由 `scripts/generate-icons.mjs` 生成，另有 16/32/48） |
 | Screenshot 1 [REQUIRED] | 1280×800 或 640×400 | ⬜ Not created | |
 | Screenshot 2 [RECOMMENDED] | 1280×800 或 640×400 | ⬜ Not created | |
 | Small Promo Tile [RECOMMENDED] | 440×280 | ⬜ Not created | |

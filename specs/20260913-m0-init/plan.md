@@ -14,6 +14,7 @@
 - [x] 1.4 依赖基线：React 18、zustand 预装（M1 即用）；无业务依赖
 - [x] 1.5 冒烟：`pnpm dev` 构建无报错；`.output/` 已入 `.gitignore`
 - [x] 1.6 侧边栏入口触发（spec 修订 2026-09-13 / D8）：manifest 增 `action: {}`（且不得有 `default_popup`）；`entrypoints/background.ts` 注册 `action.onClicked` → `sidePanel.open({ windowId })`，工具栏图标可直接打开空面板
+- [x] 1.7 扩展图标（spec 修订 2026-09-13 / D9）：`scripts/generate-icons.mjs` 生成 16/32/48/128 真实 PNG 到 `public/icon/`；manifest 声明 `icons` + `action.default_icon` + `action.default_title`；构建产物核对图片确实被打包且尺寸正确
 
 ## 2. Tailwind v4 接入与深浅色 token（对应 T0.2）
 
