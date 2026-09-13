@@ -12,9 +12,10 @@
   - 修订（2026-09-13）：对齐 roadmap T0.1 原文——content 入口在 M0 骨架清单内，初版誊漏（依 roadmap §1：发现偏差先改 spec 再改码）
 - [x] 1.3 manifest 生成核对：MV3、`minimum_chrome_version: 114`、permissions 仅 `sidePanel`（M0 阶段最小集，`storage`/`contextMenus` 等随对应里程碑追加）
 - [x] 1.4 依赖基线：React 18、zustand 预装（M1 即用）；无业务依赖
-- [x] 1.5 冒烟：`pnpm dev` 构建无报错；`.output/` 已入 `.gitignore`
+- [x] 1.5 冒烟：`pnpm dev` 构建无报错；`dist/` 已入 `.gitignore`
 - [x] 1.6 侧边栏入口触发（spec 修订 2026-09-13 / D8）：manifest 增 `action: {}`（且不得有 `default_popup`）；`entrypoints/background.ts` 注册 `action.onClicked` → `sidePanel.open({ windowId })`，工具栏图标可直接打开空面板
 - [x] 1.7 扩展图标（spec 修订 2026-09-13 / D9）：`scripts/generate-icons.mjs` 生成 16/32/48/128 真实 PNG 到 `public/icon/`；manifest 声明 `icons` + `action.default_icon` + `action.default_title`；构建产物核对图片确实被打包且尺寸正确
+- [x] 1.8 产物目录改为非隐藏目录（spec 修订 2026-09-13 / D10）：`wxt.config.ts` 设 `outDir: 'dist'`；`.gitignore` 与 eslint 忽略项同步；文档路径引用同步；删除旧 `.output/`；核对产物为 `dist/chrome-mv3`
 
 ## 2. Tailwind v4 接入与深浅色 token（对应 T0.2）
 
@@ -60,8 +61,8 @@
 任务组 1–5 全部完成（22/22），roadmap T0.1–T0.5 已回勾。
 
 - 门禁：`pnpm typecheck` / `pnpm lint` / `pnpm test` 全绿；埋错演示确认三门禁均有拦截力。
-- 构建：`pnpm build` → `.output/chrome-mv3`；manifest 核对通过（MV3 / `minimum_chrome_version: 114` / permissions 仅 `sidePanel`）。
-- dev：`pnpm dev` 正常启动（`http://localhost:3000` → `.output/chrome-mv3-dev`）。
+- 构建：`pnpm build` → `dist/chrome-mv3`；manifest 核对通过（MV3 / `minimum_chrome_version: 114` / permissions 仅 `sidePanel`）。
+- dev：`pnpm dev` 正常启动（`http://localhost:3000` → `dist/chrome-mv3-dev`）。
 - 待人工核验：Chrome 加载未打包扩展与 HMR（步骤见 [validation.md §4](validation.md)）。
 
 ### 验收期修订

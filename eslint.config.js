@@ -8,7 +8,7 @@ import prettier from 'eslint-config-prettier';
  * 分工（requirements D6）：ESLint 管代码质量，格式交给 Prettier（config-prettier 收尾）。
  */
 export default defineConfig([
-  globalIgnores(['.wxt/**', '.output/**', 'coverage/**']),
+  globalIgnores(['.wxt/**', '.output/**', 'dist/**', 'coverage/**']),
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

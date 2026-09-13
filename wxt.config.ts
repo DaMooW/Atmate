@@ -7,6 +7,9 @@ import tailwindcss from '@tailwindcss/vite';
  */
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  // 构建产物目录（spec 修订 D10）：默认的 `.output/` 是点开头的隐藏目录，
+  // macOS 访达与"加载已解压的扩展程序"的文件选择框里都看不到它，故改用非隐藏的 `dist/`。
+  outDir: 'dist',
   vite: () => ({
     plugins: [tailwindcss()],
   }),

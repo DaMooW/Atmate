@@ -32,6 +32,7 @@
 | D7 | M0 的 manifest permsissions 只声明 `sidePanel`；其余权限随里程碑逐次追加 | 最小权限起步；tech §3 全量清单是终态 |
 | D8 | **spec 修订（2026-09-13，验收期发现）**：范围追加"侧边栏入口触发"——manifest 增 `action`，service worker 用 `chrome.action.onClicked` → `chrome.sidePanel.open({ windowId })` 打开面板 | 原范围只声明 `side_panel.default_path`，而"声明本身不等于可打开"：工具栏图标点不出面板，M0 验收"能看到空 sidepanel"实际要靠 Chrome 侧边栏自带下拉。依 roadmap §1「发现偏差先改 spec 再改码」补正；依据见 `chrome-extensions` 技能必守规则 2 / 11 |
 | D9 | **spec 修订（2026-09-13，用户反馈）**：范围追加"扩展图标"——生成 16/32/48/128 真实 PNG，manifest 声明 `icons` 与 `action.default_icon`，并补 `action.default_title` | 无图标时扩展在工具栏显示为通用占位块、且被 Chrome 默认收进拼图菜单，用户"装上了但认不出来"。技能必守规则 1：要么引用真实存在的 PNG，要么完全不引用——不能只写路径不建文件 |
+| D10 | **spec 修订（2026-09-13，用户反馈）**：构建产物目录由 WXT 默认的 `.output/` 改为非隐藏的 `dist/`（`wxt.config.ts` 的 `outDir`） | 点开头的目录在 macOS 访达中默认隐藏、在"加载已解压的扩展程序"的文件选择框里也看不到，用户难以选到产物。`dist/` 本就在 `.gitignore` 中，改动成本低 |
 
 ### 修订记录（验收期）
 
@@ -48,6 +49,13 @@
   - **形象**：圆角方形底（品牌蓝渐变 `#2b7cf0 → #1a5fd0`，取自 `assets/style.css` 的 `--primary` 色系）＋白色对话气泡与两点。选气泡而非文字字标：不需要字体渲染、16px 下仍是清晰剪影，且直指产品内核"划词 → 对话"。
   - **不变的约束**：图标是静态资源，**不新增任何权限**；`action` 仍无 `default_popup`（D8 前提）。
   - **影响文件**：`scripts/generate-icons.mjs`、`public/icon/*.png`、`wxt.config.ts`、本目录 `plan.md`（新增 1.7）、`validation.md`、`CHROMEWEBSTORE.md`（商店图标一项转 ✅）。
+
+- **2026-09-13 · D10 · 构建产物目录改为 `dist/`**
+  - **问题**：WXT 默认输出到 `.output/`——点开头即隐藏目录，用户在访达里看不到，在 Chrome"加载已解压的扩展程序"的文件选择框里也几乎选不到（需要先用 ⌘⇧. 打开隐藏文件显示）。
+  - **采取**：`wxt.config.ts` 增 `outDir: 'dist'`；产物路径变为 `dist/chrome-mv3`（生产）与 `dist/chrome-mv3-dev`（开发）。
+  - **连带**：`.gitignore` 与 `eslint.config.js` 的忽略项同步为 `dist/`；文档与 `AGENTS.md` 中所有 `.output/...` 路径引用改为 `dist/...`；旧的 `.output/` 作为残留产物清理掉。
+  - **约束不变**：不改 manifest、不改权限、不影响 `pnpm dev` 与 HMR 行为。
+  - **影响文件**：`wxt.config.ts`、`.gitignore`、`eslint.config.js`、`AGENTS.md`、本目录 `plan.md`（新增 1.8）、`validation.md`。
 
 ## Context（背景与约束）
 

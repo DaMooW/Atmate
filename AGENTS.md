@@ -21,6 +21,7 @@
 - **先查技能**：涉及扩展 API（manifest、side panel、content script、service worker、存储、消息传递、右键菜单、权限…）时，先读已安装的 `chrome-extensions` 技能及其 `references/`；写 HTML/CSS/客户端 JS 前先查 `modern-web-guidance` 技能。
 - **维护 `CHROMEWEBSTORE.md`**：创建或修改扩展时，同步创建/更新仓库根目录的 `CHROMEWEBSTORE.md`，用于记录商店文案与 **每项权限的理由说明**。字段与模板见 `chrome-extensions` 技能的 `references/webstore/chromewebstore-template.md`。
 - **权限最小化**：新增权限须在对应里程碑申请并写明理由（当前仅 `sidePanel`）。
+- **产物目录用非隐藏的 `dist/`**（不用 WXT 默认的 `.output/`）：点开头的隐藏目录在访达与"加载已解压的扩展程序"的文件选择框里都看不见，用户选不到产物。
 - **诚实优先**：平台不支持的能力明确标注不可用并说明原因，不做"假装支持"。
 
 ## 失误记录
@@ -30,8 +31,8 @@
 ## 常用命令
 
 ```bash
-pnpm dev        # WXT 开发服务器 + 开发版扩展（.output/chrome-mv3-dev）
-pnpm build      # 生产构建（.output/chrome-mv3）
+pnpm dev        # WXT 开发服务器 + 开发版扩展（dist/chrome-mv3-dev）
+pnpm build      # 生产构建（dist/chrome-mv3）
 pnpm typecheck  # tsc --noEmit（strict）
 pnpm lint       # eslint + prettier --check
 pnpm test       # vitest run
