@@ -20,6 +20,8 @@
 - **门禁演示**（plan 3.6）：临时植入 `any` + 未使用变量 + 类型不符的文件后，`typecheck` 报 `error TS2322`、`eslint` 报 2 处 error；删除探针文件后三条门禁恢复全绿。
 - **侧边栏入口**（D8）：产物 manifest 含 `"action": {}` 且**无** `default_popup`；`background.js` 中已注册 `action.onClicked` → `sidePanel.open({ windowId })`。
 - **扩展图标**（D9）：`node scripts/generate-icons.mjs` 产出 16/32/48/128 真实 PNG（尺寸经 `sips -g pixelWidth/pixelHeight` 逐个核对）；产物含 `icon/*.png`（共 4.2 kB）；运行时 manifest 的 `icons` 与 `action.default_icon` 均指向它们、`action.default_title` = "在伴 Atmate"、权限仍为 `["sidePanel"]`；在 Chrome 中加载后取 `icon/16.png` 返回 `200 image/png`（证明图标路径可解析，非"只写路径不建文件"）。
+- **产物目录**（D10）：`pnpm build` → `dist/chrome-mv3`（非隐藏目录，访达与"加载已解压的扩展程序"选择框里可直接看到）；`pnpm dev` → `dist/chrome-mv3-dev`，dev 提示语同步为 `Load "dist/chrome-mv3-dev"`；旧 `.output/` 已删除。
+  - ⚠️ 注意：**在 dev 服务器运行期间修改 `outDir` 会因热重启时新旧配置混用而构建失败**（报 `Invalid pattern "../../dist/..."`）。改这类配置后应停掉旧进程**冷启动**一次。详见 [mistakeLog.md](../../mistakeLog.md) M-002。
 
 ## 2. 人工验收（roadmap M0 原文）
 
