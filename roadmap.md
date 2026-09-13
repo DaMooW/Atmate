@@ -22,8 +22,11 @@
 
 ## 1. 开发流程约定（spec-first）
 
-1. 每个里程碑开工前，先产出 `specs/M<N>-<slug>.md`（一或多个），模板：
-   背景 → 范围（引用 FR/NFR 编号）→ 交互稿（文字/线框）→ 数据与接口变更 → 边界与异常 → 验收清单。
+1. 每个里程碑开工前，先产出 `specs/<YYYYMMDD>-<slug>/` 目录（自 M0 起取代单文件 spec；目录名与分支名一致），三件套：
+   - `requirements.md` —— 背景、范围（引用 FR/NFR 编号）、关键决策、上下文与约束（含数据与接口变更、边界与异常）；
+   - `plan.md` —— 一系列编号任务组，与本文 T*.x 一一对应，完成即勾选；
+   - `validation.md` —— 交互稿要点、可复现验收清单与合并判据。
+   六段骨架与模板见 `specs/TEMPLATE.md`；首个实例为 `specs/20260913-m0-init/`。
 2. spec 评审通过（口头/留言均可）才动代码；实现中发现偏差，**改 spec 再改码**。
 3. 每个里程碑的 DoD：
    - 验收清单全绿；
@@ -35,11 +38,11 @@
 
 **目标**：`pnpm dev` 出一个空 sidepanel + background + content 骨架，门禁齐备。
 
-- [ ] T0.1 WXT + React + TS 脚手架；入口：sidepanel/background/content（viewer、options 留桩）
-- [ ] T0.2 Tailwind v4 接入；深浅色 token（颜色变量）
-- [ ] T0.3 门禁三件套跑通并接入 package.json scripts（本地 pre-commit 即可，CI 暂缓）
-- [ ] T0.4 空壳组件层级（tech §4）：App/Sidebar/Main 占位
-- [ ] T0.5 `specs/` 目录 + 模板文件落地；仓库 `git init` 与 README（一段话 + 四文档链接）
+- [x] T0.1 WXT + React + TS 脚手架；入口：sidepanel/background/content（viewer、options 留桩）
+- [x] T0.2 Tailwind v4 接入；深浅色 token（颜色变量）
+- [x] T0.3 门禁三件套跑通并接入 package.json scripts（本地 pre-commit 即可，CI 暂缓）
+- [x] T0.4 空壳组件层级（tech §4）：App/Sidebar/Main 占位
+- [x] T0.5 `specs/` 目录 + 模板文件落地；仓库 `git init` 与 README（一段话 + 四文档链接）
 
 **验收**：Chrome 114+ 加载未打包扩展，能看到空 sidepanel；改代码 HMR 生效；三条门禁命令全绿。
 
@@ -177,3 +180,4 @@
 | 2026-09-13 | — | v0.2：信息缺口讨论定案——采纳 L0：FR-1.6 基础指令（完备性声明+缺失清单+不编造）与 FR-2.5 上下文供给（选区±段落/整页/PDF 全文）；工具层不做（ADR-007），重评条款入 M6 候选池；M1/M2/M3 任务相应扩充 |
 | 2026-09-13 | — | v0.3：采纳图像输入（D-010）——FR-2.6/FR-4.6/FR-5.5/场景 E/S-5；插入新 M4（图像输入），原 M4/M5 顺延为 M5/M6 并重编号（T4.x→T5.x）；Q4/Q7 里程碑引用同步 |
 | 2026-09-13 | — | v0.4（评审定案）：定名"在伴 / Atmate"（Q1 已决，未联网查重、上架前自查）；素材落点默认当前会话·一键转新·无激活即新建（T2.4 重写）；M1 联调端点池五家入验收（含硅基流动 `org/model` 预填表收录）；M6 候选池增对照视图与一键直发（附"无黑箱"张力注记）；界面中英切换由候选升为承诺项（T6.1–T6.4，NFR-6 收紧，tech 选型 #10） |
+| 2026-09-13 | M0 | 工程初始化交付（T0.1–T0.5 全绿）：WXT 0.21 + React 18 + TS strict 脚手架，sidepanel/background/content 三入口（viewer、options 留桩）；Tailwind v4 语义 token（跟随系统深浅色，切换交互留后续）；门禁三件套接入 scripts + 本地 pre-commit（simple-git-hooks + lint-staged）；App/Sidebar/Main 空壳层级；`specs/` 模板与 README 落地。规格与验收：`specs/20260913-m0-init/` |

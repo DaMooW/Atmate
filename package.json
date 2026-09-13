@@ -1,0 +1,60 @@
+{
+  "name": "atmate",
+  "version": "0.1.0",
+  "description": "在伴（Atmate）——Chrome 侧边栏 AI 角色助手：划词发送、流式应答、token 可见",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "compile": "wxt prepare && tsc --noEmit",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "test": "vitest run",
+    "postinstall": "wxt prepare && simple-git-hooks"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@wxt-dev/module-react": "^1.2.2",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "lint-staged": "^17.5.1",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "simple-git-hooks": "^2.14.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.0",
+    "wxt": "^0.21.4"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix --max-warnings=0"
+    ],
+    "*.css": [
+      "prettier --write"
+    ],
+    "*.{json,html}": [
+      "prettier --write"
+    ]
+  }
+}
