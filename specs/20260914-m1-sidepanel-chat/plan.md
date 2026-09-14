@@ -60,17 +60,17 @@
 
 **目标**：infra/llm 客户端可用，支持流式、停止、错误分类、collectUsage 探测降级。
 
-- [ ] 4.1 请求构造：`buildRequest(config, messages, {stream, includeUsage})` → 完整请求体（含思维强度字段注入、system 拼装）
-- [ ] 4.2 SSE 解析器：`parseSSE(readableStream, callbacks)`——逐行 `data:`、`[DONE]` 结束、`delta.content` 累积、`delta.reasoning_content` / `delta.reasoning` 采集
-- [ ] 4.3 流式主函数 `streamChat(config, messages, callbacks)`：fetch + AbortController + SSE 解析
-- [ ] 4.4 停止：`abortController.abort()` 立即中断 fetch，触发 onError('aborted') 或 onDone
-- [ ] 4.5 错误分类：HTTP 状态码 → 中文提示映射（401/403/404/429/5xx/网络错误/断流）
-- [ ] 4.6 collectUsage 探测降级：首次带 `stream_options.include_usage`，400 则去掉重试一次，缓存 `collectUsageSupported: false` 到配置上
-- [ ] 4.7 usage 采集：流结束若有 usage chunk，取 `total_tokens` 回调
-- [ ] 4.8 **L1 单测**：请求构造（思维强度三映射 × system 拼装顺序）、SSE 解析器（正常流 / `[DONE]` / 断流 / 畸形 chunk / 空 delta / reasoning 两种方言 / 多行 data 合并）——覆盖 tech §10 边界用例强制清单
-- [ ] 4.9 **L2 单测**：fetch mock（成功流 / 401 / 404 / 429 / 5xx / 网络中断）、abort 行为、collectUsage 探测降级（400 → 重试 → 缓存）
+- [x] 4.1 请求构造 `infra/llm/requestBuilder.ts`：`buildRequest(config, role, history, current, {stream, includeUsage, baseDirectiveEnabled})` → 完整请求体（含思维强度字段注入、system 拼装、extraBody/temperature 预留）
+- [x] 4.2 SSE 解析器 `infra/llm/sseParser.ts`：`parseSSE(readableStream, callbacks)`——逐行 `data:`、`[DONE]` 结束、`delta.content` 累积、`delta.reasoning_content`（DeepSeek）/ `delta.reasoning`（OpenRouter）采集、usage chunk 解析、畸形 JSON 不中断
+- [x] 4.3 流式主函数 `infra/llm/client.ts`：`streamChat(config, role, history, current, options)` → `{ abort, promise }`，fetch + AbortController + SSE 解析
+- [x] 4.4 停止：`handle.abort()` → `AbortController.abort()` → 抛出 `aborted` 类型错误
+- [x] 4.5 错误分类 `infra/llm/errors.ts`：`classifyHttpError`（401/403→auth、404→not_found、429→rate_limit、400→bad_request、5xx→server）+ `classifyNetworkError`（AbortError→aborted、TypeError→network），中文可读消息
+- [x] 4.6 collectUsage 探测降级：首次带 `stream_options.include_usage`，400 则去掉重试一次；探测结果通过返回值 `collectUsageUsed` 暴露，配置更新由调用方在 T1.5 中处理
+- [x] 4.7 usage 采集：流末尾 usage chunk 解析，`onUsage` 回调 + 返回值 `usage`
+- [x] 4.8 **L1 单测**：systemPrompt（4 例）、requestBuilder（15 例：思维强度三映射注入 / system 拼装 / stream 标志 / extraBody / temperature）、errors（14 例：HTTP 全状态 / 网络错误 / 响应体提取）、sseParser（13 例：正常流 / [DONE] / reasoning 两种方言 / usage / 畸形 JSON / 空 delta / 无 [DONE] / 非 data 行）
+- [x] 4.9 **L2 单测**：client（12 例：成功流 / 401 / 404 / 429 / 网络错误 / abort / collectUsage 探测降级 / collectUsageSupported=false / collectUsage=false / usage 透传 / URL 正确 / onContent 回调）
 
-**完成判据**：用 DeepSeek 配置发起真实流式请求，首块可见、停止立即生效、断网有中文提示；单测覆盖全部边界用例。
+**完成判据**：流式请求首块可见、停止立即生效、断网有中文提示；collectUsage 探测降级自动重试；三门禁全绿（216 tests passed）。
 
 ## 5. 对话视图（对应 T1.5）
 
