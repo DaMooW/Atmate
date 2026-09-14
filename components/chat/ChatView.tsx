@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
+import { TokenStatusBar } from './TokenStatusBar';
 import { useStorageStore } from '../../infra/storage/store';
 import { streamChat } from '../../infra/llm/client';
 import { generateId } from '../../core/id';
+import { estimateMessagesTokens, isContextLimitReached } from '../../core/tokens';
 import type { ChatMessage, Session } from '../../core/types';
 import type { StreamChatHandle } from '../../infra/llm/client';
 
@@ -25,13 +27,20 @@ export function ChatView() {
   const activeConfig = apiConfigs.find((c) => c.id === activeApiConfigId) ?? null;
   const currentSession = sessions.find((s) => s.id === currentSessionId) ?? null;
 
-  // 无激活配置或无角色时禁用发送
-  const sendDisabled = !activeConfig || roles.length === 0;
+  // 估算当前会话的 token 占用（T1.6，T1.8 完善估算精度）
+  const contextUsed = currentSession ? estimateMessagesTokens(currentSession.messages) : 0;
+  const contextLimit = activeConfig?.contextLimit ?? 128000;
+  const limitReached = isContextLimitReached(contextUsed, contextLimit);
+
+  // 无激活配置/无角色/上下文达限时禁用发送
+  const sendDisabled = !activeConfig || roles.length === 0 || limitReached;
   const disabledReason = !activeConfig
     ? '请先在设置中添加并激活 API 配置'
     : roles.length === 0
       ? '请先在设置中创建或恢复默认角色'
-      : undefined;
+      : limitReached
+        ? '上下文已满，请新建会话或删除部分消息'
+        : undefined;
 
   /**
    * 获取或创建当前会话。
@@ -194,6 +203,12 @@ export function ChatView() {
         streamingMessageId={streamingMessageId}
         error={error}
         onRetry={handleRetry}
+      />
+      <TokenStatusBar
+        used={contextUsed}
+        limit={contextLimit}
+        cumulative={currentSession?.cumulativeTokens}
+        estimated
       />
       <Composer
         onSend={handleSend}
