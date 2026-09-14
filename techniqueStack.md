@@ -1,6 +1,7 @@
 # Technique Stack（技术栈与架构）
 
-> 版本：v0.4 · 2026-09-13 · 状态：定稿（评审通过）
+> 版本：v0.5 · 2026-09-14 · 状态：定稿（评审通过）
+> v0.5 变更（测试规范确立，2026-09-14）：选型总表增 #11 测试工具；§10 工程化扩充完整测试规范（四层金字塔、L2 vi.mock + @webext-core/mocks、目录与环境约定、边界用例强制清单）；新增 ADR-009。roadmap §1 DoD 同步强化。
 > v0.4 变更（评审定案，2026-09-13）：产品定名"在伴 / Atmate"——`at:` 键前缀与 IDB 库名 `at` 恰合 Atmate 缩写，沿用免迁移；模型预填表纳入聚合站 `org/model` 命名（§7）；界面中英切换定案——自研 typed 字典（§1 选型 #10）+ `uiPrefs.locale`（§5）。
 > v0.3 变更：图像输入（D-010）——消息模型 parts 化、`ApiConfig.vision`、图片归一化管线、IndexedDB 分置存储、图片 token 公式（§5/§6/§7/§8.2），权限 +`unlimitedStorage`；新增 ADR-008。
 > v0.2 变更：新增"基础指令"与"上下文供给"设计（§5/§6/§8 新增内容，风险表与 ADR-007 同步）；详见各节。
@@ -20,6 +21,7 @@
 | 8 | LLM 调用发起位置 | **扩展页面（sidepanel / PDF 页）内 fetch** | 规避 MV3 Service Worker ~30s 空闲生命周期对流式长连接的杀进程风险 | background 发起（需额外 keep-alive，复杂且脆） |
 | 9 | 打包/包体 | Vite（WXT 内置） | — | — |
 | 10 | 界面 i18n（中英切换，M6） | **自研轻量字典**：`locales/zh-CN.ts` · `en-US.ts` + `useT()` hook | UI 文案量级小（数百条）、零运行时依赖；typed dictionary 缺 key 即编译错误 | i18next（生态标准但本项目体量用不上）；chrome.i18n `_locales`（绑定浏览器语言、与 React 侧文案两套体系） |
+| 11 | 测试框架与分层 | **vitest**（单测）+ **@webext-core/mocks**（`mockBrowser` 批量 mock chrome API）+ **@testing-library/react**（组件测试，M1 后引入）+ **Playwright**（E2E，M3 后引入） | vitest 与 Vite/WXT 同构零配置；`mockBrowser` 覆盖 storage/runtime/sidePanel 等全部用到的 API，避免手写字段遗漏；组件测试等交互稳定后再加；E2E 只覆盖关键路径冒烟 | Jest（需额外配 TS/ESM）；手动 mock chrome API（字段易遗漏、维护成本高）；Puppeteer（扩展加载支持不如 Playwright 直观） |
 
 ## 2. 架构总览
 
@@ -209,7 +211,42 @@ type StoredPart =
 ├ assets/ specs/         # 复用样式；每个里程碑的功能 spec（见 roadmap §1）
 └ tests/
 ```
-- 质量门禁（CI/本地 pre-commit 同一命令集）：`tsc --noEmit` · `eslint` · `vitest run`。核心模块（§5 schema、§6 SSE 解析、§7 估算、§6 图片归一化）单测必须覆盖边界（空选区、超长文本、断流、畸形 chunk、损坏图片字节）。
+- 质量门禁（CI/本地 pre-commit 同一命令集）：`tsc --noEmit` · `eslint` · `vitest run`。
+- **测试规范（四层金字塔，roadmap §1 DoD 强制）**：
+
+  | 层级 | 测什么 | 工具 | 环境 | 目录 | 占比 |
+  |---|---|---|---|---|---|
+  | L1 core 域层单测 | 纯函数：token 估算、prompt 组装、消息 parts 化、schema 迁移、角色指令合并、上下文供给组装 | vitest | node | `tests/core/` | ~60% |
+  | L2 infra 层单测 | SSE 解析、storage 同步、消息封装、图片归一化 | vitest + `vi.mock` + `@webext-core/mocks` 的 `mockBrowser` | node | `tests/infra/` | ~20% |
+  | L3 组件测试 | Composer / MessageList / TokenStatusBar / MaterialCard 的渲染与交互 | @testing-library/react + user-event（M1 后引入） | jsdom | `tests/components/` | ~15% |
+  | L4 E2E 冒烟 | 真实 Chrome 加载扩展：划词→侧边栏打开→流式应答关键路径 | Playwright（M3 后引入） | 真实 Chrome | `e2e/` | ~5% |
+
+  - **L2 mock 方案（ADR-009）**：采用 `vi.mock` 直接 mock + `@webext-core/mocks` 的 `mockBrowser` 批量替身，不做依赖注入。示例：
+    ```ts
+    import { mockBrowser } from '@webext-core/mocks';
+    import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+    vi.mock('wxt/browser', () => ({ default: mockBrowser }));
+
+    beforeEach(() => mockBrowser.reset());
+
+    it('storage 同步层读写', async () => {
+      mockBrowser.storage.local.get.mockResolvedValue({ 'at:roles': [] });
+      // ... 调用被测函数，断言 mockBrowser.storage.local.set 被调用
+    });
+    ```
+    `mockBrowser` 覆盖本项目用到的全部 chrome API：`storage.local.get/set`、`storage.onChanged`、`runtime.sendMessage/onMessage`、`sidePanel.open`、`contextMenus`、`commands`、`webNavigation`。
+  - **vitest 环境切换**：默认 `environment: 'node'`（L1/L2）；L3 组件测试在文件顶部加 `// @vitest-environment jsdom` 逐文件切换（vitest 5 已移除 `environmentMatchGlobs`，不拆 projects 配置以保持简洁）。
+  - **文件命名**：`<被测模块名>.test.ts`（或 `.test.tsx`），与源码模块一一对应；测试内 `describe` 用模块名，`it` 用行为描述（"空字符串返回 0"而非"test1"）。
+  - **边界用例强制清单**（核心模块必须覆盖，否则 T*.x 不得勾选）：
+    - token 估算：空文本、超长文本（100k+ 字符）、纯中文、纯英文、中英混合、仅空白字符；
+    - SSE 解析：正常流、`[DONE]` 正常结束、`[DONE]` 出现在异常位置、断流（连接中途关闭）、畸形 chunk（非 JSON / 缺 choices / delta 为空）、`delta.reasoning_content` 与 `delta.reasoning` 两种方言、多行 `data:` 合并；
+    - 图片归一化：损坏字节、超大图（长边 >4096px）、不支持的格式、SVG（应拒绝或降级）、fetch 失败；
+    - storage schema 迁移：v1 纯文本消息 → v2 parts 化、旧版本缺失字段补默认、未知 schemaVersion 报错而非静默；
+    - 上下文供给：空选区、选区在输入框内、readability 提取失败降级、>50 页 PDF 截断、超长选区截断提示；
+    - `collectUsage` 探测：端点对未知字段 400 → 去掉字段重试一次、重试成功后缓存探测结果。
+  - **提交门禁**：每个 T*.x 任务完成时，对应测试文件必须存在且 `pnpm test` 全绿；无测试的核心逻辑变更不得勾选任务、不得提交（roadmap §1 DoD）。M0 过渡期 `passWithNoTests: true`，M1 收尾时关闭。
+  - **不做的事**：不对 chrome API 本身做测试（那是浏览器的责任）；不在单测里起真实 HTTP 服务（mock fetch）；M1~M2 不上 E2E（交互仍在变，重写成本高）。
 - 代码风格 ESLint + Prettier；提交信息 Conventional Commits（feat/fix/spec/…）。
 
 ## 11. 风险与对策
@@ -240,3 +277,4 @@ type StoredPart =
 - **ADR-006 前端状态以 storage 为唯一真相源**：SW/面板/查看页多上下文一致性靠 onChanged 广播，不靠内存同步。
 - **ADR-007 信息缺口用提示词层解决，不引入工具层**（2026-09-13 评审）：信息不完整的需求以三件事闭环——FR-1.6 基础指令（AI 声明缺失清单）、多轮会话 + FR-2.5 上下文供给（用户补足信息）、素材卡片透明可见（无黑箱）。不做 tool calling：OpenAI 兼容端点对工具支持参差、引入 prompt injection 面与确认交互成本。待真实使用反馈证明"声明缺口"不够用后再重评（届时进入 M6 候选池）。
 - **ADR-008 图片输入只在扩展侧归一，二进制分置 IndexedDB**（2026-09-13，D-010）：content script/viewer 只上报 URL，由 side panel 统一取回、降采样（长边 ≤1568px → JPEG）、以 `data:` URL 内联发送——不要求端点回源抓图（NFR-2"仅两方"）；图片字节不入 storage.local；音频/视频维持 out of scope。
+- **ADR-009 测试分层为四层金字塔，L2 采用 vi.mock + mockBrowser 而非依赖注入**（2026-09-14）：Chrome 扩展多上下文、强依赖 chrome API，测试策略按"越底层越纯、越容易测"组织——L1 core 纯函数（node，~60%）、L2 infra  mock chrome（node，~20%）、L3 组件（jsdom，~15%）、L4 E2E（真实 Chrome，~5%，M3 后引入）。L2 不做依赖注入（方案 A）而用 `vi.mock('wxt/browser')` + `@webext-core/mocks` 的 `mockBrowser`（方案 B）：项目 infra 层薄、规模小，方案 B 写得快且与 WXT 生态一致；`mockBrowser` 提供完整 API 替身，避免手写字段遗漏。代价是 mock 与实现耦合紧，若 chrome API 调用方式大改需同步更新 mock——但本项目 API 接触面稳定，可接受。
