@@ -52,3 +52,9 @@
   --color-text-muted: var(--ink-muted);
   --color-border: var(--line);
 }
+
+@layer components {
+  .input {
+    @apply w-full rounded border border-border bg-surface px-3 py-2 text-sm text-text transition-colors outline-none focus:border-primary;
+  }
+}

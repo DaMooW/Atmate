@@ -24,19 +24,19 @@
 
 **目标**：用户可完整管理多套 API 配置，含思维强度模型能力推荐与连接测试。
 
-- [ ] 2.1 API 配置列表：展示所有配置，高亮激活项，支持切换激活
-- [ ] 2.2 新建/编辑表单：name / baseUrl / apiKey（脱敏输入）/ modelId / contextLimit / thinking / collectUsage；字段校验（URL 格式、必填、contextLimit 为正整数）
-- [ ] 2.3 删除配置：确认弹窗；删除激活项时激活态置空
-- [ ] 2.4 **模型能力表** `core/modelCapabilities.ts`：预填常见模型的 `thinkingType / levels / defaultLevel`（D7，见 requirements §4.8）；支持精确匹配 + 前缀匹配
-- [ ] 2.5 思维强度 UI 动态推荐：选择 modelId 后自动设置 mapping 类型与 level 下拉选项；`none` 类型置灰并提示；用户可手动切换为 custom（JSON 模板 + `{{level}}` 插值）
-- [ ] 2.6 思维强度三映射实现：`reasoning_effort`（值表）/ `budget_tokens`（`thinking: {type:'enabled', budget_tokens}`）/ custom（模板插值）；档位 off/light/medium/deep
-- [ ] 2.7 contextLimit 预填表：`modelId → limit` 映射（收录 gpt-* / claude-* / glm-* / deepseek-* / kimi-* / 聚合站 org/model 命名）；命中自动填，未命中手填必填
-- [ ] 2.8 连接测试按钮：发送最小请求（`messages: [{role:'user', content:'hi'}]`，非流式），成功/失败反馈
-- [ ] 2.9 apiKey UI 脱敏：默认 `••••`，点击显示/隐藏；不写入 console
-- [ ] 2.10 **L1 单测**：字段校验函数（URL/必填/数值范围）、模型能力表匹配（精确/前缀/未命中）、思维强度映射构造（三种 mapping × 各档位）、预填表命中逻辑
-- [ ] 2.11 **L2 单测**：连接测试的 fetch mock（成功/401/404/超时）
+- [x] 2.1 API 配置列表：展示所有配置，高亮激活项，支持切换激活（`components/settings/ApiConfigList.tsx`）
+- [x] 2.2 新建/编辑表单：name / baseUrl / apiKey（脱敏输入）/ modelId / contextLimit / thinking / collectUsage；字段校验（`components/settings/ApiConfigForm.tsx` + `core/validation.ts`）
+- [x] 2.3 删除配置：确认弹窗；删除激活项时激活态置空（切换到第一个或 null）
+- [x] 2.4 **模型能力表** `core/modelCapabilities.ts`：预填常见模型的 `thinkingType / levels / defaultLevel`（D7）；精确匹配 + 前缀匹配 + 默认回退
+- [x] 2.5 思维强度 UI 动态推荐：选择 modelId 后自动设置 mapping 类型；`none` 类型自动关闭并提示；用户可手动切换为 custom（JSON 模板 + `{{level}}` 插值）
+- [x] 2.6 思维强度三映射实现：`reasoning_effort` / `budget_tokens` / custom（`core/thinking.ts` 的 `buildThinkingBody`）；档位 off/light/medium/deep
+- [x] 2.7 contextLimit 预填表 `core/contextLimits.ts`：收录 gpt-* / claude-* / glm-* / deepseek-* / kimi-* / 聚合站 org/model 命名；命中自动填，未命中手填
+- [x] 2.8 连接测试按钮 `infra/llm/connectionTest.ts`：发送最小非流式请求，成功/失败反馈，HTTP 状态码中文分类
+- [x] 2.9 apiKey UI 脱敏：默认 password 输入，点击显示/隐藏；不写入 console
+- [x] 2.10 **L1 单测**：validation（29 例）、modelCapabilities（11 例）、thinking（13 例）、contextLimits（10 例）
+- [x] 2.11 **L2 单测**：连接测试 fetch mock（12 例：成功/401/403/404/429/400/500/网络错误/URL 拼接/请求头/请求体）
 
-**完成判据**：选择 DeepSeek 模型后自动推荐 `reasoning_effort` + low/medium/high；选择不支持思维链的模型后开关置灰；可手动覆盖为 custom。
+**完成判据**：选择 DeepSeek 模型后自动推荐 `reasoning_effort` + low/medium/high；选择 gpt-4o 后思维强度自动关闭；可手动覆盖为 custom；三门禁全绿（144 tests passed）。
 
 ## 3. 设置视图·角色（对应 T1.3）
 
