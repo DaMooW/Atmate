@@ -13,11 +13,15 @@ import type { StreamChatHandle } from '../../infra/llm/client';
  * 对话视图（spec M1 T1.5）。
  * 集成 LLM 客户端：发送 → 流式渲染 → 存盘；停止；错误展示 + 重试。
  */
-export function ChatView() {
+interface Props {
+  currentSessionId: string | null;
+  onSessionChange: (sessionId: string) => void;
+}
+
+export function ChatView({ currentSessionId, onSessionChange }: Props) {
   const { apiConfigs, activeApiConfigId, roles, sessions, setSessions, uiPrefs } =
     useStorageStore();
 
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
@@ -62,9 +66,9 @@ export function ChatView() {
       createdAt: now,
       updatedAt: now,
     };
-    setCurrentSessionId(newSession.id);
+    onSessionChange(newSession.id);
     return newSession;
-  }, [currentSession, roles]);
+  }, [currentSession, roles, onSessionChange]);
 
   /**
    * 更新当前会话的消息并存盘。
