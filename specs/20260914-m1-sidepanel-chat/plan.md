@@ -76,18 +76,18 @@
 
 **目标**：消息流渲染正确，流式增量更新，Markdown+代码高亮，发送/停止可用。
 
-- [ ] 5.1 `MessageList`：渲染消息列表，区分 user/assistant/system；自动滚动到底部
-- [ ] 5.2 `MessageItem`：content 渲染（react-markdown + remark-gfm + rehype-highlight）；user 消息右对齐/assistant 左对齐
-- [ ] 5.3 流式增量渲染：仅末条 assistant 消息增量追加，不全量重渲染（NFR-1）
-- [ ] 5.4 `Composer`：多行输入框（Enter 发送 / Shift+Enter 换行）、发送按钮、停止按钮（流式中显示停止）
-- [ ] 5.5 发送流程：取当前会话 + 激活配置 + 角色 → 构造 messages → 调 streamChat → 增量渲染 → 结束后存盘
-- [ ] 5.6 无激活配置/无角色时：发送禁用 + 引导提示
-- [ ] 5.7 错误展示：流式出错时在末条消息下方显示中文错误提示 + 重试按钮
-- [ ] 5.8 Markdown 渲染：表格、代码块（带语言高亮）、列表、引用正常
-- [ ] 5.9 **L1 单测**：消息组装纯函数（system + 历史 + user 顺序）
-- [ ] 5.10 **L3 组件测试**（按需，交互稳定后）：Composer 发送/停止切换、MessageList 渲染
+- [x] 5.1 `components/chat/MessageList.tsx`：渲染消息列表，区分 user/assistant；自动滚动到底部；错误展示 + 重试按钮
+- [x] 5.2 `components/chat/MessageItem.tsx`：content 渲染（react-markdown + remark-gfm + rehype-highlight + highlight.js github 主题）；user 右对齐/assistant 左对齐；流式中显示光标
+- [x] 5.3 流式增量渲染：onContent 回调中仅更新末条 assistant 消息的 content，不全量重渲染
+- [x] 5.4 `components/chat/Composer.tsx`：多行输入框（Enter 发送 / Shift+Enter 换行）、自动高度、发送按钮、停止按钮（流式中显示）
+- [x] 5.5 发送流程 `components/chat/ChatView.tsx`：取当前会话 + 激活配置 + 角色 → 构造 messages → 调 streamChat → 增量渲染 → 结束后存盘（setSessions）
+- [x] 5.6 无激活配置/无角色时：发送禁用 + 引导提示（disabledReason）
+- [x] 5.7 错误展示：流式出错时在消息流末尾显示中文错误提示 + 重试按钮（使用最后一条用户消息重试）
+- [x] 5.8 Markdown 渲染：表格、代码块（带语言高亮）、列表、引用、标题正常（assets/style.css .markdown-body 样式）
+- [x] 5.9 **L1 单测**：消息组装纯函数已在 requestBuilder 测试中覆盖（15 例，含 system + 历史 + user 顺序、历史 system 过滤）
+- [ ] 5.10 **L3 组件测试**（按需，交互稳定后）：Composer 发送/停止切换、MessageList 渲染 — M1 后引入 @testing-library/react，本里程碑不做
 
-**完成判据**：手动输入 → 发送 → 流式输出 → Markdown 渲染正确 → 停止生效 → 错误有提示。
+**完成判据**：手动输入 → 发送 → 流式输出 → Markdown 渲染正确 → 停止生效 → 错误有提示；三门禁全绿（216 tests passed），构建成功（533.41 kB）。
 
 ## 6. TokenStatusBar（对应 T1.6）
 
