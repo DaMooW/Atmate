@@ -206,3 +206,129 @@ describe('infra/storage · onChanged 回流', () => {
     expect(useStore.getState().uiPrefs).toEqual(newPrefs);
   });
 });
+
+/**
+ * 验收期缺陷回归（specs/20260914-m1-fix-storage-echo / ADR-010）：
+ * storage.local.set 异步，自身写入的回声常滞后于后续写入；若把回声当外部变更套用，
+ * 内存状态会被拉回旧快照，流式输出因此丢字。以下用例锁定"回声不回退状态"。
+ */
+describe('infra/storage · 自身写入回声抑制', () => {
+  /** 造一个含单条消息的会话，content 不同 → 指纹不同 */
+  function sessionsWith(content: string) {
+    return [
+      {
+        id: 's1',
+        roleId: 'r1',
+        title: '新对话',
+        messages: [{ id: 'm1', role: 'assistant', content, createdAt: 1 }],
+        cumulativeTokens: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ] as never;
+  }
+
+  it('滞后的自身回声不会把 sessions 拉回旧值', async () => {
+    const useStore = await loadStore();
+    await useStore.getState().init();
+    const v1 = sessionsWith('A');
+    const v2 = sessionsWith('AB');
+    await useStore.getState().setSessions(v1);
+    await useStore.getState().setSessions(v2);
+    // 回声迟到，携带的是上一轮写入的内容
+    await fakeBrowser.storage.onChanged.trigger({ 'at:sessions': { newValue: v1 } }, 'local');
+    expect(useStore.getState().sessions).toBe(v2);
+  });
+
+  it('流式式连续写入 + 滞后积压的回声：状态不倒退', async () => {
+    const useStore = await loadStore();
+    await useStore.getState().init();
+    const snapshots: unknown[] = [];
+    for (let i = 0; i < 50; i += 1) {
+      const snapshot = sessionsWith('x'.repeat(i + 1));
+      snapshots.push(snapshot);
+      await useStore.getState().setSessions(snapshot);
+    }
+    const latest = snapshots[snapshots.length - 1];
+    // 真实场景：写入早已跑完，回声才追上来，且到达时携带的是更旧的内容
+    for (const snapshot of snapshots.slice(0, -1)) {
+      await fakeBrowser.storage.onChanged.trigger(
+        { 'at:sessions': { newValue: snapshot } },
+        'local',
+      );
+    }
+    expect(useStore.getState().sessions).toBe(latest);
+  });
+
+  it('回声乱序到达也不回退', async () => {
+    const useStore = await loadStore();
+    await useStore.getState().init();
+    const v1 = sessionsWith('A');
+    const v2 = sessionsWith('AB');
+    const v3 = sessionsWith('ABC');
+    await useStore.getState().setSessions(v1);
+    await useStore.getState().setSessions(v2);
+    await useStore.getState().setSessions(v3);
+    for (const snapshot of [v3, v1, v2]) {
+      await fakeBrowser.storage.onChanged.trigger(
+        { 'at:sessions': { newValue: snapshot } },
+        'local',
+      );
+    }
+    expect(useStore.getState().sessions).toBe(v3);
+  });
+
+  it('外部上下文的写入（指纹未登记）仍正常回流', async () => {
+    const useStore = await loadStore();
+    await useStore.getState().init();
+    await useStore.getState().setSessions(sessionsWith('本地写入'));
+    const external = sessionsWith('其他上下文写入');
+    await fakeBrowser.storage.onChanged.trigger({ 'at:sessions': { newValue: external } }, 'local');
+    expect(useStore.getState().sessions).toBe(external);
+  });
+
+  it('回声对象键序被重排（真实 storage 行为）时仍识别为自身回声', async () => {
+    /** 模拟 Chrome storage 的行为：值重新序列化后对象键变为字母序 */
+    const reorderKeys = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(reorderKeys);
+      if (value && typeof value === 'object') {
+        const source = value as Record<string, unknown>;
+        const out: Record<string, unknown> = {};
+        for (const key of Object.keys(source).sort()) out[key] = reorderKeys(source[key]);
+        return out;
+      }
+      return value;
+    };
+
+    const useStore = await loadStore();
+    await useStore.getState().init();
+    const stale = sessionsWith('A');
+    const latest = sessionsWith('AB');
+    await useStore.getState().setSessions(stale);
+    await useStore.getState().setSessions(latest);
+    await fakeBrowser.storage.onChanged.trigger(
+      { 'at:sessions': { newValue: reorderKeys(stale) } },
+      'local',
+    );
+    expect(useStore.getState().sessions).toBe(latest);
+  });
+
+  it('同一批回流里：本地键被忽略、外部键生效', async () => {
+    const useStore = await loadStore();
+    await useStore.getState().init();
+    const stale = sessionsWith('旧快照');
+    const latest = sessionsWith('最新快照');
+    await useStore.getState().setSessions(stale);
+    await useStore.getState().setSessions(latest);
+    const externalRoles = [{ id: 'r9', name: '外部角色', builtin: false }] as never;
+    await fakeBrowser.storage.onChanged.trigger(
+      {
+        'at:sessions': { newValue: stale },
+        'at:roles': { newValue: externalRoles },
+      },
+      'local',
+    );
+    expect(useStore.getState().sessions).toBe(latest);
+    expect(useStore.getState().roles).toBe(externalRoles);
+  });
+});
