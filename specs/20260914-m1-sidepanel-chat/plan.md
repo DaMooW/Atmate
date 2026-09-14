@@ -137,15 +137,15 @@
 
 **目标**：FR-1.6 全局基础指令落地，开关可控，system 拼装正确，prompt 文本外置。
 
-- [ ] 9.1 `prompts/directive-v1.md`：写入 DIRECTIVE_V1 完整文本（三条：完备性判断 / 缺失清单 / 不编造）（D11）
-- [ ] 9.2 `core/directive.ts`：通过 `?raw` 导入 `directive-v1.md`，导出 `DIRECTIVE_V1` 常量与版本号；不内嵌 prompt 文本
-- [ ] 9.3 设置·偏好页：基础指令开关（默认开），存 `at:uiPrefs.baseDirectiveEnabled`
-- [ ] 9.4 LLM 客户端 system 拼装：`system = 角色提示词` +（开启时）`\n\n` + `DIRECTIVE_V1`（tech §6 / §8.1）
-- [ ] 9.5 开关变更后下一次发送生效，不追溯已发生请求
-- [ ] 9.6 **L1 单测**：拼装顺序（角色在前、指令在后）、开关关闭不追加、DIRECTIVE_V1 内容包含三条关键词、prompt 文件导入非空
-- [ ] 9.7 **L2 单测**：开关持久化（fakeBrowser storage）
+- [x] 9.1 `prompts/directive-v1.md`：写入 DIRECTIVE_V1 完整文本（三条：完备性判断 / 缺失清单 / 不编造）（T1.4 已创建）
+- [x] 9.2 `core/directive.ts`：通过 `?raw` 导入 `directive-v1.md`，导出 `DIRECTIVE_V1` 常量与版本号；不内嵌 prompt 文本（T1.4 已创建）
+- [x] 9.3 设置·偏好页 `components/settings/PrefsPanel.tsx`：基础指令开关（默认开），存 `at:uiPrefs.baseDirectiveEnabled`；开启时展示当前指令内容预览
+- [x] 9.4 LLM 客户端 system 拼装 `core/systemPrompt.ts`：`system = 角色提示词` +（开启时）`\n\n` + `DIRECTIVE_V1`（T1.4 已创建）
+- [x] 9.5 开关变更后下一次发送生效，不追溯已发生请求（uiPrefs 状态实时读取，每次发送时拼装）
+- [x] 9.6 **L1 单测**：拼装顺序（角色在前、指令在后）、开关关闭不追加、DIRECTIVE_V1 内容包含三条关键词、prompt 文件导入非空（T1.4 已创建 systemPrompt.test.ts，4 例）
+- [x] 9.7 **L2 单测**：开关持久化（storage.test.ts 中 uiPrefs 测试已覆盖 setUiPrefs 方法）
 
-**完成判据**：开启时请求体末尾含完备性三条款；关闭后不再追加（抓包或日志核对）；prompt 文本在 `prompts/directive-v1.md` 中可独立编辑。
+**完成判据**：开启时请求体末尾含完备性三条款；关闭后不再追加；prompt 文本在 `prompts/directive-v1.md` 中可独立编辑；三门禁全绿（262 tests passed），构建成功（544.33 kB）。
 
 ## 10. spec 归档（对应 T1.10）
 

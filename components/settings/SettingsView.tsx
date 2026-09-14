@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ApiConfigList } from './ApiConfigList';
 import { RoleList } from './RoleList';
+import { PrefsPanel } from './PrefsPanel';
 
 /**
  * 设置视图（tech §4 三个一级视图之一）。
@@ -30,9 +31,7 @@ export function SettingsView() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === 'api' && <ApiConfigList />}
         {tab === 'roles' && <RoleList />}
-        {tab === 'prefs' && (
-          <div className="p-4 text-sm text-text-muted">偏好设置（T1.9 实现）</div>
-        )}
+        {tab === 'prefs' && <PrefsPanel />}
       </div>
     </div>
   );
