@@ -5,7 +5,11 @@ import { TokenStatusBar } from './TokenStatusBar';
 import { useStorageStore } from '../../infra/storage/store';
 import { streamChat } from '../../infra/llm/client';
 import { generateId } from '../../core/id';
-import { estimateMessagesTokens, isContextLimitReached } from '../../core/tokens';
+import {
+  estimateMessagesTokens,
+  isContextLimitReached,
+  estimateRoundTokens,
+} from '../../core/tokens';
 import type { ChatMessage, Session } from '../../core/types';
 import type { StreamChatHandle } from '../../infra/llm/client';
 
@@ -158,6 +162,24 @@ export function ChatView({ currentSessionId, onSessionChange }: Props) {
         streamHandleRef.current = handle;
 
         await handle.promise;
+
+        // 流式结束后更新会话累计 token（T1.8）
+        const currentAfter = useStorageStore.getState().sessions.find((s) => s.id === session.id);
+        if (currentAfter) {
+          const finalAssistant = currentAfter.messages.find((m) => m.id === assistantMsg.id);
+          if (finalAssistant) {
+            const roundTokens = estimateRoundTokens(userMsg, finalAssistant);
+            const updatedSessions = useStorageStore
+              .getState()
+              .sessions.map((s) =>
+                s.id === session.id
+                  ? { ...s, cumulativeTokens: s.cumulativeTokens + roundTokens }
+                  : s,
+              );
+            setSessions(updatedSessions);
+          }
+        }
+
         setStreaming(false);
         setStreamingMessageId(null);
         streamHandleRef.current = null;
@@ -177,6 +199,7 @@ export function ChatView({ currentSessionId, onSessionChange }: Props) {
       activeConfig,
       uiPrefs.baseDirectiveEnabled,
       updateSessionMessages,
+      setSessions,
     ],
   );
 

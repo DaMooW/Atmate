@@ -1,50 +1,65 @@
 /**
- * Token 估算（techniqueStack §7）
+ * Token 计量（techniqueStack §7）
  *
- * M1 简化版：按字符数估算（中文约 1 char = 1 token，英文约 4 chars = 1 token）。
- * T1.8 会完善为更精确的估算（基于 cl100k_base 等分词规则的近似）。
- * 精确模式（API usage）在流式结束后覆盖估算值。
+ * 三级策略，按优先级降级：
+ * 1. 精确：API 返回 usage → 逐条消息记录，会话累计求和
+ * 2. 估算（无 usage 时）：tokens ≈ ceil(总字符数 / 3.2)（混合系数，±15%）
+ * 3. 校准【加分】：设置里允许用户改全局估算系数
+ *
+ * 引入浏览器端 BPE 库（js-tiktoken/gpt-tokenizer）暂缓，待 M5 评估。
  */
+
+/** 默认估算系数（总字符数 / 3.2 ≈ token 数） */
+export const DEFAULT_TOKEN_RATIO = 3.2;
 
 /**
  * 估算文本的 token 数。
  *
- * 规则：
- * - CJK 统一表意文字（中文/日文/韩文）：1 字符 ≈ 1 token
- * - 其他字符（英文/数字/标点/空白）：4 字符 ≈ 1 token
+ * 公式：tokens ≈ ceil(总字符数 / ratio)
+ * 系数对中英混合在主流 BPE 分词下经验值 ±15%。
  *
  * @param text 输入文本
+ * @param ratio 估算系数，默认 3.2
  * @returns 估算的 token 数
  */
-export function estimateTokens(text: string): number {
+export function estimateTokens(text: string, ratio: number = DEFAULT_TOKEN_RATIO): number {
   if (!text) return 0;
-
-  let cjkCount = 0;
-  let otherCount = 0;
-
-  for (const char of text) {
-    const code = char.codePointAt(0)!;
-    // CJK 统一表意文字范围
-    if (
-      (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
-      (code >= 0x3400 && code <= 0x4dbf) || // CJK Unified Ideographs Extension A
-      (code >= 0x3040 && code <= 0x30ff) || // Hiragana + Katakana
-      (code >= 0xac00 && code <= 0xd7af) // Hangul Syllables
-    ) {
-      cjkCount++;
-    } else {
-      otherCount++;
-    }
-  }
-
-  return cjkCount + Math.ceil(otherCount / 4);
+  return Math.ceil(text.length / ratio);
 }
 
 /**
  * 估算消息列表的总 token 数。
+ *
+ * 序列化所有消息（role + content）后估算，模拟实际发送的 token 开销。
+ * 每条消息额外加 4 token 的 role/结构开销（经验值）。
  */
-export function estimateMessagesTokens(messages: Array<{ content: string }>): number {
-  return messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+export function estimateMessagesTokens(
+  messages: Array<{ role: string; content: string }>,
+  ratio: number = DEFAULT_TOKEN_RATIO,
+): number {
+  if (messages.length === 0) return 0;
+  const serialized = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+  // 每条消息额外 4 token 的结构开销
+  return estimateTokens(serialized, ratio) + messages.length * 4;
+}
+
+/**
+ * 计算单轮对话的 token 消耗。
+ * 用于会话累计：本轮 user + assistant 的 token 估算（或精确值）。
+ */
+export function estimateRoundTokens(
+  userMessage: { content: string },
+  assistantMessage: { content: string; usage?: { total: number } },
+  ratio: number = DEFAULT_TOKEN_RATIO,
+): number {
+  // 有精确 usage 时用精确值
+  if (assistantMessage.usage?.total) {
+    return assistantMessage.usage.total;
+  }
+  // 无 usage 时估算 user + assistant
+  return (
+    estimateTokens(userMessage.content, ratio) + estimateTokens(assistantMessage.content, ratio)
+  );
 }
 
 /**

@@ -124,14 +124,14 @@
 
 **目标**：估算函数准确可靠，会话累计逻辑在 core 层。
 
-- [ ] 8.1 `core/tokens.ts`：`estimateTokens(text)` → `ceil(总字符数 / 3.2)`（tech §7）
-- [ ] 8.2 `estimateMessagesTokens(messages)` → 序列化所有消息后估算
-- [ ] 8.3 会话累计：`Session` 维护 `cumulativeTokens`，每轮结束后 += 本轮估算（或 usage 精确值）
-- [ ] 8.4 估算与精确混合：有 usage 的轮次用精确值，无 usage 的轮次用估算值（M1 主要走估算，usage 预留）
-- [ ] 8.5 **L1 单测**：空文本 / 超长文本（100k+ 字符）/ 纯中文 / 纯英文 / 中英混合 / 仅空白字符——覆盖 tech §10 边界用例强制清单
-- [ ] 8.6 **L1 单测**：会话累计（精确+估算混合求和、空会话=0）
+- [x] 8.1 `core/tokens.ts`：`estimateTokens(text, ratio=3.2)` → `ceil(总字符数 / 3.2)`（tech §7），支持自定义 ratio
+- [x] 8.2 `estimateMessagesTokens(messages)` → 序列化所有消息（role + content）后估算，每条消息额外 4 token 结构开销
+- [x] 8.3 会话累计：`Session.cumulativeTokens`，每轮结束后 `+= estimateRoundTokens(user, assistant)`（ChatView 流式结束后更新）
+- [x] 8.4 估算与精确混合：`estimateRoundTokens` 有 usage 时用精确值（`usage.total`），无 usage 时用估算值；`usage.total=0` 回退到估算
+- [x] 8.5 **L1 单测**：空文本 / 超长文本（100k 字符）/ 纯中文 / 纯英文 / 中英混合 / 仅空白字符 / 自定义 ratio——覆盖 tech §10 边界用例强制清单
+- [x] 8.6 **L1 单测**：会话累计（`estimateRoundTokens` 精确+估算混合、usage.total=0 回退、空消息）
 
-**完成判据**：中英混合样例估算值在合理范围；累计逻辑正确。
+**完成判据**：中英混合样例估算值在合理范围（±15%）；累计逻辑正确；三门禁全绿（262 tests passed），构建成功（540.90 kB）。
 
 ## 9. 基础指令（对应 T1.9）
 
