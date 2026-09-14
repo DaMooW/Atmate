@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 /**
  * WXT 配置（tech §1 选型 #1 / §10）
- * M0 权限最小集：仅 sidePanel；storage/contextMenus/unlimitedStorage 随对应里程碑追加。
+ * M1 权限：sidePanel + storage（持久化会话/角色/配置）；contextMenus 随 M2 追加，unlimitedStorage 随 M4 追加。
  */
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
@@ -18,7 +18,7 @@ export default defineConfig({
     short_name: 'Atmate',
     description: 'Chrome 侧边栏 AI 角色助手：划词发送，流式应答，token 用量与上下文一目了然。',
     minimum_chrome_version: '114',
-    permissions: ['sidePanel'],
+    permissions: ['sidePanel', 'storage'],
     // 图标（spec 修订 D9）：由 `node scripts/generate-icons.mjs` 生成的真实 PNG。
     // public/ 下的文件会被原样拷贝到产物根目录，故路径写作 icon/N.png。
     icons: {

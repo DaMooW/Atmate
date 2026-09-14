@@ -8,17 +8,17 @@
 
 **目标**：tech §5 数据模型落地，storage 同步层可用，schema 迁移骨架就位。
 
-- [ ] 1.1 定义域类型：`ApiConfig` / `Role` / `ChatMessage` / `Session` / `ThinkingConfig` / `ThinkingLevel` / `MsgSource`（`core/types.ts`），与 tech §5 完全对齐
-- [ ] 1.2 `at:meta` schemaVersion = 1；迁移函数骨架 `migrateSchema(currentVersion, targetVersion)`，未知版本抛错
-- [ ] 1.3 nanoid 引入（或自写短 ID 生成器，零依赖优先）；ID 生成纯函数 + 单测
-- [ ] 1.4 storage 同步层 `createStorageStore`：启动一次性装载所有 `at:*` 键 → 内存 store；写操作 → `storage.local.set` → `onChanged` 回流广播；多上下文一致
-- [ ] 1.5 初始状态：无数据时生成默认 uiPrefs（baseDirectiveEnabled=true）、空 apiConfigs/roles/sessions
-- [ ] 1.6 目录结构就绪：创建 `prompts/`（含 `roles/` 子目录）、`core/`、`infra/`、`tests/core/`、`tests/infra/` 目录（tech §10）；Vite `?raw` 导入类型声明（`vite-env.d.ts` 或 `wxt.d.ts` 中声明 `*?raw` 模块）
-- [ ] 1.6 **L1 单测**：ID 生成唯一性/长度、schema 迁移（v1 直通、未知版本报错）、初始状态生成
-- [ ] 1.7 **L2 单测**：storage 同步层读写（`vi.mock('wxt/browser')` + fakeBrowser）、onChanged 回流
-- [ ] 1.8 manifest 新增 `storage` 权限（D6）；`CHROMEWEBSTORE.md` 同步记录权限理由
+- [x] 1.1 定义域类型：`ApiConfig` / `Role` / `ChatMessage` / `Session` / `ThinkingConfig` / `ThinkingLevel` / `MsgSource`（`core/types.ts`），与 tech §5 完全对齐
+- [x] 1.2 `at:meta` schemaVersion = 1；迁移函数骨架 `migrateSchema(currentVersion, targetVersion)`，未知版本抛错
+- [x] 1.3 自写短 ID 生成器（零依赖，`crypto.getRandomValues`）；ID 生成纯函数 + 单测
+- [x] 1.4 storage 同步层 `useStorageStore`（zustand）：启动一次性装载所有 `at:*` 键 → 内存 store；写操作 → `storage.local.set` → `onChanged` 回流广播；多上下文一致
+- [x] 1.5 初始状态：无数据时生成默认 uiPrefs（baseDirectiveEnabled=true）、空 apiConfigs/roles/sessions
+- [x] 1.6 目录结构就绪：创建 `prompts/`（含 `roles/` 子目录）、`core/`、`infra/`、`tests/core/`、`tests/infra/` 目录；Vite `?raw` 导入类型声明（`types/vite-env.d.ts`）
+- [x] 1.7 **L1 单测**：ID 生成（5 例）、schema 迁移（7 例）、初始状态（4 例）
+- [x] 1.8 **L2 单测**：storage 同步层读写 + onChanged 回流（13 例，`vi.mock('wxt/browser')` + fakeBrowser）
+- [x] 1.9 manifest 新增 `storage` 权限（D6）；`CHROMEWEBSTORE.md` 同步记录权限理由
 
-**完成判据**：`pnpm test` 中 core/types + storage 相关用例全绿；storage 读写 round-trip 正确。
+**完成判据**：三门禁全绿（typecheck / lint / 69 tests passed）；构建成功；storage 读写 round-trip 正确。
 
 ## 2. 设置视图·API 配置（对应 T1.2）
 
