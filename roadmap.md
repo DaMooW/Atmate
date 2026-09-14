@@ -51,16 +51,16 @@
 
 **范围**：FR-3 全部；FR-1.1–1.4；FR-2.3；FR-4 全部（除 extraBody/温度）；FR-5.1–5.2（估算模式）；FR-6 全部。此阶段无 content script，素材靠手动粘贴。
 
-- [ ] T1.1 core 域层 + storage 同步层（tech §5 schema 落地；含 nanoid、schemaVersion 迁移骨架）＋单测
-- [ ] T1.2 设置视图·API 配置：列表/新建/编辑/删除/切换激活；字段校验；思维强度三映射（reasoning_effort / budget_tokens / custom 模板+{{level}} 插值）；contextLimit 预填表；连接测试按钮
-- [ ] T1.3 设置视图·角色：CRUD + 内置示例角色；新建会话时选择角色
-- [ ] T1.4 llm 客户端：请求构造（tech §6）、SSE 解析、停止（AbortController）、错误分类中文提示；collectUsage 探测降级；**单测（断流/畸形 chunk/空 delta）**
-- [ ] T1.5 对话视图：消息流、末条增量渲染、Markdown+高亮、发送/停止
-- [ ] T1.6 TokenStatusBar：估算（tech §7）、三段变色、达限禁发红条
-- [ ] T1.7 会话列表：切换/重命名/删除/持久化；标题自动生成
-- [ ] T1.8 Token 估算 + 会话累计 in core，**单测（中英混合样例）**
-- [ ] T1.9 基础指令（FR-1.6）：`DIRECTIVE_V1` 常量 + 设置开关（默认开）+ system 拼装（tech §6/§8.1）；单测（拼装顺序、开关关闭不追加）
-- [ ] T1.10 spec `specs/M1-sidepanel-chat.md` 归档为已实现版
+- [x] T1.1 core 域层 + storage 同步层（tech §5 schema 落地；含 nanoid、schemaVersion 迁移骨架）＋单测
+- [x] T1.2 设置视图·API 配置：列表/新建/编辑/删除/切换激活；字段校验；思维强度三映射（reasoning_effort / budget_tokens / custom 模板+{{level}} 插值）；contextLimit 预填表；连接测试按钮
+- [x] T1.3 设置视图·角色：CRUD + 内置示例角色；新建会话时选择角色
+- [x] T1.4 llm 客户端：请求构造（tech §6）、SSE 解析、停止（AbortController）、错误分类中文提示；collectUsage 探测降级；**单测（断流/畸形 chunk/空 delta）**
+- [x] T1.5 对话视图：消息流、末条增量渲染、Markdown+高亮、发送/停止
+- [x] T1.6 TokenStatusBar：估算（tech §7）、三段变色、达限禁发红条
+- [x] T1.7 会话列表：切换/重命名/删除/持久化；标题自动生成
+- [x] T1.8 Token 估算 + 会话累计 in core，**单测（中英混合样例）**
+- [x] T1.9 基础指令（FR-1.6）：`DIRECTIVE_V1` 常量 + 设置开关（默认开）+ system 拼装（tech §6/§8.1）；单测（拼装顺序、开关关闭不追加）
+- [x] T1.10 spec `specs/20260914-m1-sidepanel-chat/` 归档为已实现版
 
 **验收**（全部可复现勾选）：
 - [ ] 配置一个真实 OpenAI 兼容端点，30 秒内完成保存→测试→开始对话（联调端点池 · 2026-09-13 定：DeepSeek 验 reasoning_content；智谱 GLM 验 usage 精确模式；OpenRouter 验 `delta.reasoning` 方言；Kimi 验长上下文供给与限额治理；硅基流动验 `org/model` 命名——预填表收录）
@@ -188,3 +188,4 @@
 | 2026-09-14 | — | v0.5：测试规范确立——§1 DoD 强化为"每个 T*.x 对应测试写完且通过才算完成，否则不得勾选/提交"；M2 T2.1/T2.6、M3 T3.6、M5 T5.1/T5.5 补测试标注；测试规范全文入 techniqueStack §10（四层金字塔 L1 core / L2 infra vi.mock+mockBrowser / L3 组件 jsdom / L4 E2E 后期，含目录约定与边界用例强制清单）；新增 ADR-009；`vitest.config.ts` 扩展 include 支持 .tsx 并注明组件测试环境切换方式。spec：`specs/20260914-testing-policy/` |
 | 2026-09-14 | M0 | M0 测试回溯补齐——v0.5 测试规范确立后，回溯补齐 M0（T0.1–T0.5）的测试覆盖：提取 `scripts/generate-icons.mjs` 纯函数为 `scripts/icon-engine.mjs`（+ `.d.mts` 类型声明），写 L1 单测 25 例（insideRoundRect/insideTriangle/crc32/encodePng/render，含边界）；L2 background 行为测试 3 例（用 `vi.stubGlobal` + WXT 内置 `wxt/testing/fake-browser`，验证点击图标→sidePanel.open 与失败路径）；manifest 配置验证 8 例（权限最小化/action 无 default_popup/icons 四尺寸/outDir）；smoke 升级为项目结构检查 4 例。合计 40 用例全绿。同时发现 git 中原始图标过时（代码微调后未重新生成），已更新为当前脚本产物。关键发现：WXT entrypoints 的 `browser`/`defineBackground` 是全局注入，需用 `vi.stubGlobal` 而非 `vi.mock`（techniqueStack §10 待修正）。spec：`specs/20260914-m0-tests/` |
 | 2026-09-14 | — | 文档修正：techniqueStack §10 L2 mock 方案——原写 `vi.mock('wxt/browser')` + `@webext-core/mocks` 的 `mockBrowser`，M0 测试实战发现两处偏差：(1) `@webext-core/mocks` npm 包不存在，正确的是 WXT 内置 `wxt/testing/fake-browser` 导出 `fakeBrowser`（re-export `@webext-core/fake-browser`），无需单独装包；(2) WXT entrypoints 的 `browser`/`defineBackground` 是全局注入，必须用 `vi.stubGlobal` + 动态 import + `vi.resetModules()`，`vi.mock` 只适用于显式 import `wxt/browser` 的 infra 模块。同步修正 §1 选型 #11、§12 ADR-009、AGENTS.md；补充 fake-browser API 要点（事件 `.trigger()`、方法 `vi.spyOn`）。spec：`specs/20260914-fix-l2-mock-doc/` |
+| 2026-09-14 | M1 | 侧边栏对话 MVP 交付（T1.1–T1.10 全绿）：core 域层（types/id/schema/defaults/modelCapabilities/contextLimits/validation/thinking/builtinRoles/directive/systemPrompt/tokens/session）+ storage 同步层（zustand + onChanged 回流 + 默认角色 seed）+ infra/llm 客户端（requestBuilder/sseParser/errors/client，含 collectUsage 探测降级）+ UI（设置视图 API配置/角色/偏好三 tab、对话视图 MessageList/MessageItem/Composer/ChatView、TokenStatusBar、SessionList）+ prompts 外置（roles/*.md + directive-v1.md，?raw 导入）。测试 262 例全绿（L1 core ~60% + L2 infra ~20%），构建 544 kB。关键决策：思维强度用模型能力预填表（非动态 API）、默认角色 seed 后可编辑删除、prompt 全部外置不内嵌、token 估算用 ceil(字符数/3.2) 混合系数。spec：`specs/20260914-m1-sidepanel-chat/` |

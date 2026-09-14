@@ -151,13 +151,13 @@
 
 **目标**：本目录三件套更新为已实现版，roadmap 回勾，变更记录追加。
 
-- [ ] 10.1 本目录 requirements/plan/validation 三件套更新为"已实现"状态（勾选完成项、记录实际结果）
-- [ ] 10.2 roadmap.md T1.1–T1.9 全部回勾为 `[x]`，T1.10 勾选
-- [ ] 10.3 roadmap.md §10 追加一行 M1 变更记录
-- [ ] 10.4 `CHROMEWEBSTORE.md` 确认权限说明已更新（storage 权限理由）
-- [ ] 10.5 确认 `passWithNoTests` 已关闭（vitest.config.ts）
+- [x] 10.1 本目录 requirements/plan/validation 三件套更新为"已实现"状态（勾选完成项、记录实际结果）
+- [x] 10.2 roadmap.md T1.1–T1.9 全部回勾为 `[x]`，T1.10 勾选
+- [x] 10.3 roadmap.md §10 追加一行 M1 变更记录
+- [x] 10.4 `CHROMEWEBSTORE.md` 确认权限说明已更新（storage 权限理由：保存会话历史、角色预设与 API 配置）
+- [x] 10.5 确认 `passWithNoTests` 已关闭（vitest.config.ts 改为 false）
 
-**完成判据**：roadmap M1 全部勾选，变更记录已追加，spec 目录状态为已实现。
+**完成判据**：roadmap M1 全部勾选，变更记录已追加，spec 目录状态为已实现；三门禁全绿（262 tests passed）。
 
 ---
 
