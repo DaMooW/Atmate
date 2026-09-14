@@ -23,15 +23,37 @@ beforeEach(() => {
 });
 
 describe('infra/storage · init', () => {
-  it('空 storage 时装载默认初始状态', async () => {
+  it('空 storage 时装载默认初始状态并 seed 默认角色', async () => {
     const useStore = await loadStore();
     await useStore.getState().init();
     const state = useStore.getState();
     expect(state.initialized).toBe(true);
     expect(state.apiConfigs).toEqual([]);
-    expect(state.roles).toEqual([]);
+    // T1.3 D2：首次启动自动 seed 四个默认角色
+    expect(state.roles).toHaveLength(4);
+    expect(state.roles.map((r) => r.name)).toContain('翻译官');
     expect(state.sessions).toEqual([]);
     expect(state.uiPrefs.baseDirectiveEnabled).toBe(true);
+  });
+
+  it('已有角色时不重复 seed', async () => {
+    const existingRole = { id: 'custom-1', name: '自定义', systemPrompt: 'test', builtin: false };
+    vi.spyOn(fakeBrowser.storage.local, 'get').mockImplementation(async () => ({
+      'at:roles': [existingRole],
+      'at:meta': { schemaVersion: 1 },
+    }));
+    const setSpy = vi
+      .spyOn(fakeBrowser.storage.local, 'set')
+      .mockImplementation(async () => undefined);
+    const useStore = await loadStore();
+    await useStore.getState().init();
+    // 不应该写入 roles（因为已有角色，不需要 seed）
+    const roleWrites = setSpy.mock.calls.filter(
+      (call) => call[0] && Object.prototype.hasOwnProperty.call(call[0], 'at:roles'),
+    );
+    expect(roleWrites).toHaveLength(0);
+    expect(useStore.getState().roles).toHaveLength(1);
+    expect(useStore.getState().roles[0]!.name).toBe('自定义');
   });
 
   it('从 storage 读取已有数据', async () => {

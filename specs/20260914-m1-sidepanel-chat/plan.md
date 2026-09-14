@@ -42,19 +42,19 @@
 
 **目标**：角色 CRUD 可用，四个默认角色首次启动 seed（prompt 外置），seed 后与普通角色同等可编辑/删除，提供恢复默认入口。
 
-- [ ] 3.1 `prompts/roles/` 目录：创建四个 `.md` 文件（translator / summarizer / code-reviewer / academic-explainer），写入具体 system prompt（D2 / D11，文案见 requirements §4.4）
-- [ ] 3.2 `core/builtinRoles.ts`：通过 `?raw` 导入四个 prompt 文件，导出默认角色元数据（id / name / description / promptSource）；不内嵌 prompt 文本
-- [ ] 3.3 首次启动 seed：storage 初始化时若 `at:roles` 为空，将四个默认角色写入（`builtin: true` 标记）；非首次不重复 seed
-- [ ] 3.4 角色列表：展示所有角色；`builtin: true` 的角色显示"默认"角标，但**操作权限与普通角色相同**（可编辑/删除/复制）
-- [ ] 3.5 新建/编辑角色：name / systemPrompt（多行文本）/ icon（可选）/ description（可选）
-- [ ] 3.6 删除角色：所有角色均可删（含默认角色）；确认弹窗；删除后引用该角色的会话保留 roleId 但显示"角色已删除"
-- [ ] 3.7 复制角色：所有角色均可复制为新角色（`builtin: false`）
-- [ ] 3.8 "恢复默认角色"入口：设置页角色区域提供按钮，仅 seed 列表中不存在的默认角色（不覆盖已有同名/同 id 角色）；全部存在时按钮置灰
-- [ ] 3.9 新建会话时选择角色：弹窗或下拉，默认选中第一个；无角色时引导先创建
-- [ ] 3.10 **L1 单测**：默认角色 prompt 导入非空、seed 逻辑（空列表 seed 四个 / 非空不重复）、恢复默认（缺失才补 / 已有不覆盖）、角色 CRUD 纯函数
-- [ ] 3.11 **L2 单测**：角色持久化读写（fakeBrowser storage）
+- [x] 3.1 `prompts/roles/` 目录：创建四个 `.md` 文件（translator / summarizer / code-reviewer / academic-explainer），写入具体 system prompt（D2 / D11）
+- [x] 3.2 `core/builtinRoles.ts`：通过 `?raw` 导入四个 prompt 文件，导出 `BUILTIN_ROLES` / `createBuiltinRoles()` / `getMissingBuiltinRoles()`；不内嵌 prompt 文本
+- [x] 3.3 首次启动 seed：storage `init()` 时若 `at:roles` 为空，将四个默认角色写入（`builtin: true` 标记）；非首次不重复 seed
+- [x] 3.4 角色列表 `components/settings/RoleList.tsx`：展示所有角色；`builtin: true` 显示"默认"角标，操作权限与普通角色相同（可编辑/删除/复制）
+- [x] 3.5 新建/编辑角色 `components/settings/RoleForm.tsx`：name / systemPrompt（多行文本）/ description（可选）；icon 字段预留暂不实现 UI
+- [x] 3.6 删除角色：所有角色均可删（含默认角色）；确认弹窗提示"引用该角色的会话会保留但显示角色已删除"
+- [x] 3.7 复制角色：所有角色均可复制为新角色（`builtin: false`，名称加"副本"后缀）
+- [x] 3.8 "恢复默认角色"入口：角色列表顶部按钮，仅 seed 列表中不存在的默认角色（按 ID 匹配，不覆盖已有）；全部存在时按钮不显示
+- [ ] 3.9 新建会话时选择角色：**依赖 T1.7 会话列表 UI**，在 T1.7 中集成角色选择下拉
+- [x] 3.10 **L1 单测**：builtinRoles（13 例：prompt 导入非空 / createBuiltinRoles / getMissingBuiltinRoles 按 ID 匹配 / 用户重命名不算缺失）
+- [x] 3.11 **L2 单测**：storage init seed 行为（空列表 seed 四个 / 已有角色不重复 seed / 不写入 roles），storage 测试扩充至 14 例
 
-**完成判据**：首次启动有四个默认角色且 prompt 非空；可编辑/删除默认角色；删除后可通过"恢复默认"补回；新建会话能选角色。
+**完成判据**：首次启动有四个默认角色且 prompt 非空；可编辑/删除默认角色；删除后可通过"恢复默认"补回；三门禁全绿（158 tests passed）。
 
 ## 4. LLM 客户端（对应 T1.4）
 

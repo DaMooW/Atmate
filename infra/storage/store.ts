@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import { browser } from 'wxt/browser';
 import { createInitialState } from '../../core/defaults';
+import { createBuiltinRoles } from '../../core/builtinRoles';
 import { migrateSchema, SCHEMA_VERSION } from '../../core/schema';
 import type { ApiConfig, AppStorageState, Role, Session, UiPrefs } from '../../core/types';
 import { ALL_STORAGE_KEYS, STORAGE_KEYS } from './keys';
@@ -129,6 +130,11 @@ export const useStorageStore = create<StorageStore>((set, get) => {
       if (state.meta.schemaVersion !== SCHEMA_VERSION) {
         state.meta = { ...state.meta, schemaVersion: SCHEMA_VERSION };
         await writeKey(STORAGE_KEYS.meta, state.meta);
+      }
+      // 首次启动 seed 默认角色（T1.3 D2）
+      if (state.roles.length === 0) {
+        state.roles = createBuiltinRoles();
+        await writeKey(STORAGE_KEYS.roles, state.roles);
       }
       set({ ...state, initialized: true });
     },

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ApiConfigList } from './ApiConfigList';
+import { RoleList } from './RoleList';
 
 /**
  * 设置视图（tech §4 三个一级视图之一）。
@@ -28,9 +29,7 @@ export function SettingsView() {
       {/* Tab 内容 */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === 'api' && <ApiConfigList />}
-        {tab === 'roles' && (
-          <div className="p-4 text-sm text-text-muted">角色管理（T1.3 实现）</div>
-        )}
+        {tab === 'roles' && <RoleList />}
         {tab === 'prefs' && (
           <div className="p-4 text-sm text-text-muted">偏好设置（T1.9 实现）</div>
         )}
