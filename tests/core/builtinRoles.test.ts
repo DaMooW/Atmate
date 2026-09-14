@@ -1,18 +1,36 @@
 import { describe, it, expect } from 'vitest';
-import { BUILTIN_ROLES, createBuiltinRoles, getMissingBuiltinRoles } from '../../core/builtinRoles';
+import {
+  BUILTIN_ROLES,
+  DEFAULT_ROLE_ID,
+  createBuiltinRoles,
+  getMissingBuiltinRoles,
+} from '../../core/builtinRoles';
 import type { Role } from '../../core/types';
 
 describe('core/builtinRoles · BUILTIN_ROLES', () => {
-  it('包含四个默认角色', () => {
-    expect(BUILTIN_ROLES).toHaveLength(4);
+  it('包含五个默认角色', () => {
+    expect(BUILTIN_ROLES).toHaveLength(5);
   });
 
-  it('四个角色名称正确', () => {
+  it('五个角色名称正确', () => {
     const names = BUILTIN_ROLES.map((r) => r.name);
+    expect(names).toContain('在伴 Atmate');
     expect(names).toContain('翻译官');
     expect(names).toContain('摘要助手');
     expect(names).toContain('代码审查员');
     expect(names).toContain('学术解说员');
+  });
+
+  it('默认角色为「在伴 Atmate」，且位于列表首位', () => {
+    expect(DEFAULT_ROLE_ID).toBe('builtin-atmate');
+    expect(BUILTIN_ROLES[0]!.id).toBe(DEFAULT_ROLE_ID);
+  });
+
+  it('「在伴 Atmate」的 prompt 是产品介绍设定（含划词/角色/token 关键词）', () => {
+    const atmate = BUILTIN_ROLES.find((r) => r.id === 'builtin-atmate')!;
+    expect(atmate.systemPrompt).toContain('划词');
+    expect(atmate.systemPrompt).toContain('角色');
+    expect(atmate.systemPrompt).toContain('token');
   });
 
   it('每个角色的 prompt 非空（?raw 导入成功）', () => {
@@ -44,7 +62,7 @@ describe('core/builtinRoles · BUILTIN_ROLES', () => {
 describe('core/builtinRoles · createBuiltinRoles', () => {
   it('生成 Role 实体数组', () => {
     const roles = createBuiltinRoles();
-    expect(roles).toHaveLength(4);
+    expect(roles).toHaveLength(5);
     for (const role of roles) {
       expect(role.builtin).toBe(true);
       expect(role.id).toBeTruthy();
@@ -62,8 +80,8 @@ describe('core/builtinRoles · createBuiltinRoles', () => {
 });
 
 describe('core/builtinRoles · getMissingBuiltinRoles', () => {
-  it('空列表返回全部四个', () => {
-    expect(getMissingBuiltinRoles([])).toHaveLength(4);
+  it('空列表返回全部五个', () => {
+    expect(getMissingBuiltinRoles([])).toHaveLength(5);
   });
 
   it('全部存在时返回空数组', () => {
@@ -88,9 +106,9 @@ describe('core/builtinRoles · getMissingBuiltinRoles', () => {
         builtin: true,
       },
     ];
-    // 翻译官 ID 存在，不算缺失；其余三个缺失
+    // 翻译官 ID 存在，不算缺失；其余四个缺失
     const missing = getMissingBuiltinRoles(renamed);
-    expect(missing).toHaveLength(3);
+    expect(missing).toHaveLength(4);
     expect(missing.find((m) => m.id === 'builtin-translator')).toBeUndefined();
   });
 
@@ -98,6 +116,6 @@ describe('core/builtinRoles · getMissingBuiltinRoles', () => {
     const custom: Role[] = [
       { id: 'custom-1', name: '自定义', systemPrompt: 'test', builtin: false },
     ];
-    expect(getMissingBuiltinRoles(custom)).toHaveLength(4);
+    expect(getMissingBuiltinRoles(custom)).toHaveLength(5);
   });
 });

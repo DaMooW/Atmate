@@ -5,6 +5,8 @@ import { TokenStatusBar } from './TokenStatusBar';
 import { useStorageStore } from '../../infra/storage/store';
 import { streamChat } from '../../infra/llm/client';
 import { generateId } from '../../core/id';
+import { generateSessionTitle, upsertSessionMessages } from '../../core/session';
+import { DEFAULT_ROLE_ID } from '../../core/builtinRoles';
 import {
   estimateMessagesTokens,
   isContextLimitReached,
@@ -52,12 +54,12 @@ export function ChatView({ currentSessionId, onSessionChange }: Props) {
 
   /**
    * 获取或创建当前会话。
-   * 如果没有当前会话，创建一个新会话（使用第一个角色）。
+   * 如果没有当前会话，创建一个新会话（使用默认角色「在伴 Atmate」）。
    */
   const ensureSession = useCallback((): Session => {
     if (currentSession) return currentSession;
 
-    const role = roles[0];
+    const role = roles.find((r) => r.id === DEFAULT_ROLE_ID) ?? roles[0];
     if (!role) throw new Error('无可用角色');
 
     const now = Date.now();
@@ -76,29 +78,14 @@ export function ChatView({ currentSessionId, onSessionChange }: Props) {
 
   /**
    * 更新当前会话的消息并存盘。
+   * 会话列表始终以 store 为准（不能用渲染闭包里的 sessions，避免流式期间丢失首次写入的标题）。
    */
   const updateSessionMessages = useCallback(
-    (sessionId: string, messages: ChatMessage[], title?: string) => {
-      const updated = sessions.map((s) =>
-        s.id === sessionId ? { ...s, messages, title: title ?? s.title, updatedAt: Date.now() } : s,
-      );
-      // 如果是新会话，需要加入 sessions 数组
-      if (!sessions.some((s) => s.id === sessionId)) {
-        const session = {
-          id: sessionId,
-          roleId: roles[0]!.id,
-          title: title ?? '新对话',
-          messages,
-          cumulativeTokens: 0,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
-        setSessions([session, ...updated]);
-      } else {
-        setSessions(updated);
-      }
+    (sessionId: string, messages: ChatMessage[], title?: string, roleId?: string) => {
+      const current = useStorageStore.getState().sessions;
+      setSessions(upsertSessionMessages(current, sessionId, messages, { title, roleId }));
     },
-    [sessions, roles, setSessions],
+    [setSessions],
   );
 
   /**
@@ -131,8 +118,9 @@ export function ChatView({ currentSessionId, onSessionChange }: Props) {
         };
 
         const newMessages = [...session.messages, userMsg, assistantMsg];
-        const title = session.messages.length === 0 ? text.slice(0, 20) : session.title;
-        updateSessionMessages(session.id, newMessages, title);
+        const title =
+          session.messages.length === 0 ? generateSessionTitle(newMessages) : session.title;
+        updateSessionMessages(session.id, newMessages, title, session.roleId);
         setStreamingMessageId(assistantMsg.id);
         setStreaming(true);
 

@@ -38,6 +38,37 @@ export function updateSessionMessages(
 }
 
 /**
+ * 更新会话消息；会话不存在时按消息生成标题并创建（放在列表首位）。
+ * 供对话视图发送/流式期间复用，避免"流式增量把首次标题覆盖"的回退。
+ */
+export function upsertSessionMessages(
+  sessions: Session[],
+  sessionId: string,
+  messages: ChatMessage[],
+  options: { title?: string; roleId?: string; now?: number } = {},
+): Session[] {
+  const now = options.now ?? Date.now();
+  const exists = sessions.some((s) => s.id === sessionId);
+
+  if (!exists) {
+    const session: Session = {
+      id: sessionId,
+      roleId: options.roleId ?? '',
+      title: options.title ?? generateSessionTitle(messages),
+      messages,
+      cumulativeTokens: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    return [session, ...sessions];
+  }
+
+  return sessions.map((s) =>
+    s.id === sessionId ? { ...s, messages, title: options.title ?? s.title, updatedAt: now } : s,
+  );
+}
+
+/**
  * 删除会话。
  */
 export function deleteSession(sessions: Session[], sessionId: string): Session[] {

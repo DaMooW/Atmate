@@ -3,6 +3,7 @@ import {
   generateSessionTitle,
   sortSessionsByUpdatedAt,
   updateSessionMessages,
+  upsertSessionMessages,
   deleteSession,
   renameSession,
 } from '../../core/session';
@@ -115,6 +116,50 @@ describe('core/session · updateSessionMessages', () => {
   it('不修改其他会话', () => {
     const updated = updateSessionMessages(mockSessions, 's1', mockMessages);
     expect(updated.find((s) => s.id === 's2')!.messages).toHaveLength(0);
+  });
+});
+
+describe('core/session · upsertSessionMessages', () => {
+  const messages: ChatMessage[] = [
+    { id: 'm1', role: 'user', content: '你好，请翻译这段文字', createdAt: 1 },
+  ];
+
+  it('会话不存在时创建，并保留传入的标题与角色', () => {
+    const result = upsertSessionMessages([], 'new-1', messages, {
+      title: '你好，请翻译这段文字',
+      roleId: 'builtin-atmate',
+      now: 100,
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'new-1',
+      title: '你好，请翻译这段文字',
+      roleId: 'builtin-atmate',
+      cumulativeTokens: 0,
+      createdAt: 100,
+      updatedAt: 100,
+    });
+  });
+
+  it('会话不存在且未传标题时，用首条用户消息生成标题', () => {
+    const result = upsertSessionMessages([], 'new-2', messages, { roleId: 'r1' });
+    expect(result[0]!.title).toBe('你好，请翻译这段文字');
+  });
+
+  it('会话已存在时更新消息，且未传标题时保留原标题', () => {
+    const existing: Session = {
+      id: 's1',
+      roleId: 'r1',
+      title: '手工改过的标题',
+      messages: [],
+      cumulativeTokens: 0,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const result = upsertSessionMessages([existing], 's1', messages, { now: 200 });
+    expect(result[0]!.title).toBe('手工改过的标题');
+    expect(result[0]!.messages).toBe(messages);
+    expect(result[0]!.updatedAt).toBe(200);
   });
 });
 

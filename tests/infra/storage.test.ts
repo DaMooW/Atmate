@@ -29,8 +29,9 @@ describe('infra/storage · init', () => {
     const state = useStore.getState();
     expect(state.initialized).toBe(true);
     expect(state.apiConfigs).toEqual([]);
-    // T1.3 D2：首次启动自动 seed 四个默认角色
-    expect(state.roles).toHaveLength(4);
+    // T1.3 D2：首次启动自动 seed 五个默认角色（含「在伴 Atmate」）
+    expect(state.roles).toHaveLength(5);
+    expect(state.roles[0]!.name).toBe('在伴 Atmate');
     expect(state.roles.map((r) => r.name)).toContain('翻译官');
     expect(state.sessions).toEqual([]);
     expect(state.uiPrefs.baseDirectiveEnabled).toBe(true);

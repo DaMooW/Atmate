@@ -27,6 +27,8 @@
 | D-009 | 2026-09-13 | 信息缺口：指令层+上下文供给，不做工具 | 产品 · tradeoff | 定案（含 L1 重评条款） |
 | D-010 | 2026-09-13 | 图像输入：纳入图片，维持音频/视频排除 | 产品 · tradeoff | 定案 |
 | D-011 | 2026-09-14 | storage 回流忽略"自身写入回声" | 技术 · 缺陷修复 | 定案 |
+| D-012 | 2026-09-15 | 会话标题未自动生成的修复 | 技术 · 缺陷修复 | 定案 |
+| D-013 | 2026-09-15 | 思维强度强制置灰 + 空对话默认角色 | 产品 · 技术 | 定案 |
 
 ---
 
@@ -297,6 +299,50 @@
 - spec：`specs/20260914-m1-fix-storage-echo/`。
 
 **重评条款**：出现多上下文并发写同一键（M2/M3 引入 background 业务状态）时，重新评估"最后写入者获胜 + 回声抑制"是否足够；届时考虑写入版本号（schema v2）或按消息粒度合并。
+
+---
+
+## D-012 · 会话标题未自动生成的修复（M1 验收缺陷）
+
+**时间**：2026-09-15 ｜ **类别**：技术 · 缺陷修复 ｜ **状态**：定案 ｜ **决断人**：用户确认（"D-1 直接改"）
+
+**描述**：M1 验收 §2.8 发现会话标题没有按"首条用户消息前 20 字"生成——所有经对话流程创建的会话标题都是"新对话"（首个为"新会话"）。定位到 `ChatView.updateSessionMessages`：首次发送用 `text.slice(0,20)` 写对了标题，但流式增量回调里该函数用渲染闭包中的 `sessions` 判断"会话是否存在"；流式期间闭包不包含刚创建的新会话，于是每次增量都走"新建会话"分支，用 `title ?? '新对话'` 重建会话对象，把首次写入的标题覆盖。
+
+**最终采取**：会话列表一律以 `useStorageStore.getState().sessions` 为准（不再读渲染闭包）；标题统一走 `generateSessionTitle`（取首条用户消息、超 20 字加 `...`、空则"新会话"）；新建分支显式传入 `session.roleId` 与首次标题。测试：`core/session.generateSessionTitle` 已有 L1 覆盖；`builtinRoles` 相关由 D-013 一并补测；标题端到端行为在 Chrome 真机复验。
+
+**解决**：`components/chat/ChatView.tsx`；M1 validation §2.8、§4。
+
+**重评条款**：无。
+
+---
+
+## D-013 · 思维强度强制置灰 + 空对话默认角色（M1 验收修订）
+
+**时间**：2026-09-15 ｜ **类别**：产品 · 技术 ｜ **状态**：定案 ｜ **决断人**：用户确认
+
+**描述**：M1 验收暴露两个交互口径问题，用户裁定如下：
+
+1. **D-2 思维强度**：选择不支持思维链的模型（能力表 `thinkingType === 'none'`）时，思维强度开关必须**强制置灰**，不允许手动再开启（原实现是"自动关闭 + 提示，但可手动重新勾选"）。
+2. **D-3 空对话默认角色**：从空对话直接发送消息时，使用一个默认角色，其 System Prompt 即"在伴 Atmate"的产品介绍设定；因此新增第五个默认角色。
+
+**候选方案与 tradeoff**：
+
+| 项 | 方案 | 结论 |
+|---|---|---|
+| D-2 | A. 仅 `disabled` 置灰；B. 置灰并删除配置项 | 采纳 A：checkbox `disabled`，`checked` 强制 false，提示文案改"思维强度已禁用" |
+| D-3 | A. 新增默认角色并用固定 ID 选中；B. 复用 `roles[0]` 约定 | 采纳 A：新增 `prompts/roles/atmate.md` + `builtinRoles.DEFAULT_ROLE_ID='builtin-atmate'`；空对话用 `roles.find(id===DEFAULT_ROLE_ID) ?? roles[0]`，不依赖数组顺序 |
+
+**最终采取**：
+
+- `components/settings/ApiConfigForm.tsx`：`thinkingDisabled = cap.thinkingType === 'none'`，checkbox 置灰且强制取消勾选；
+- `prompts/roles/atmate.md`（新增）：在伴的产品介绍设定（划词 / 角色 / token 可见 / 仅两方 / 表达风格）；
+- `core/builtinRoles.ts`：`BUILTIN_ROLES` 首位新增 `builtin-atmate`，导出 `DEFAULT_ROLE_ID`；
+- `components/chat/ChatView.tsx`：`ensureSession` 优先 `DEFAULT_ROLE_ID`；
+- 测试：`builtinRoles` 增补为 5 角色、默认角色与 prompt 关键词断言；`storage` seed 断言同步为 5。
+
+**解决**：上述代码与 `tests/core/builtinRoles.test.ts`、`tests/infra/storage.test.ts`；M1 validation §2.6、§2.8、§4。
+
+**重评条款**：若后续出现多个"默认/系统"角色需求，再考虑给 `Role` 增加 `isDefault` 标志或独立"系统角色"槽位。
 
 ---
 

@@ -101,6 +101,8 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
 
   const getError = (field: string) => errors.find((e) => e.field === field)?.message;
   const cap = getModelCapability(form.modelId);
+  /** 不支持思维链的模型：强制禁用，不允许手动覆盖（M1 验收修订 D-2） */
+  const thinkingDisabled = cap.thinkingType === 'none';
 
   return (
     <div className="flex h-full flex-col">
@@ -164,8 +166,8 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
             placeholder="deepseek-chat"
             className="input"
           />
-          {cap.thinkingType === 'none' && form.modelId && (
-            <p className="mt-1 text-xs text-text-muted">该模型不支持思维链，思维强度已自动关闭</p>
+          {thinkingDisabled && form.modelId && (
+            <p className="mt-1 text-xs text-text-muted">该模型不支持思维链，思维强度已禁用</p>
           )}
         </Field>
 
@@ -187,8 +189,10 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
             <label className="flex items-center gap-2 text-xs">
               <input
                 type="checkbox"
-                checked={form.thinking.enabled}
+                disabled={thinkingDisabled}
+                checked={form.thinking.enabled && !thinkingDisabled}
                 onChange={(e) => handleThinkingEnabledChange(e.target.checked)}
+                className="disabled:cursor-not-allowed disabled:opacity-50"
               />
               启用
             </label>

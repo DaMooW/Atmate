@@ -5,6 +5,7 @@
  * 不内嵌在代码中。首次启动时 seed 到 storage，之后与用户自建角色同等可编辑/删除。
  */
 
+import atmatePrompt from '../prompts/roles/atmate.md?raw';
 import translatorPrompt from '../prompts/roles/translator.md?raw';
 import summarizerPrompt from '../prompts/roles/summarizer.md?raw';
 import codeReviewerPrompt from '../prompts/roles/code-reviewer.md?raw';
@@ -22,6 +23,12 @@ export interface BuiltinRoleDef {
 
 /** 默认角色定义列表（顺序即展示顺序） */
 export const BUILTIN_ROLES: BuiltinRoleDef[] = [
+  {
+    id: 'builtin-atmate',
+    name: '在伴 Atmate',
+    description: '产品默认助手：介绍在伴的能力，处理闲聊与一般性问答',
+    systemPrompt: atmatePrompt,
+  },
   {
     id: 'builtin-translator',
     name: '翻译官',
@@ -47,6 +54,9 @@ export const BUILTIN_ROLES: BuiltinRoleDef[] = [
     systemPrompt: academicExplainerPrompt,
   },
 ];
+
+/** 空对话直接发送时使用的默认角色（spec M1 验收修订 D-3） */
+export const DEFAULT_ROLE_ID = 'builtin-atmate';
 
 /**
  * 将默认角色定义转换为 Role 实体（用于 seed）。

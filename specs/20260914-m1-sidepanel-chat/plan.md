@@ -40,11 +40,11 @@
 
 ## 3. 设置视图·角色（对应 T1.3）
 
-**目标**：角色 CRUD 可用，四个默认角色首次启动 seed（prompt 外置），seed 后与普通角色同等可编辑/删除，提供恢复默认入口。
+**目标**：角色 CRUD 可用，五个默认角色首次启动 seed（prompt 外置），seed 后与普通角色同等可编辑/删除，提供恢复默认入口。
 
 - [x] 3.1 `prompts/roles/` 目录：创建四个 `.md` 文件（translator / summarizer / code-reviewer / academic-explainer），写入具体 system prompt（D2 / D11）
 - [x] 3.2 `core/builtinRoles.ts`：通过 `?raw` 导入四个 prompt 文件，导出 `BUILTIN_ROLES` / `createBuiltinRoles()` / `getMissingBuiltinRoles()`；不内嵌 prompt 文本
-- [x] 3.3 首次启动 seed：storage `init()` 时若 `at:roles` 为空，将四个默认角色写入（`builtin: true` 标记）；非首次不重复 seed
+- [x] 3.3 首次启动 seed：storage `init()` 时若 `at:roles` 为空，将五个默认角色写入（`builtin: true` 标记）；非首次不重复 seed
 - [x] 3.4 角色列表 `components/settings/RoleList.tsx`：展示所有角色；`builtin: true` 显示"默认"角标，操作权限与普通角色相同（可编辑/删除/复制）
 - [x] 3.5 新建/编辑角色 `components/settings/RoleForm.tsx`：name / systemPrompt（多行文本）/ description（可选）；icon 字段预留暂不实现 UI
 - [x] 3.6 删除角色：所有角色均可删（含默认角色）；确认弹窗提示"引用该角色的会话会保留但显示角色已删除"
@@ -54,7 +54,7 @@
 - [x] 3.10 **L1 单测**：builtinRoles（13 例：prompt 导入非空 / createBuiltinRoles / getMissingBuiltinRoles 按 ID 匹配 / 用户重命名不算缺失）
 - [x] 3.11 **L2 单测**：storage init seed 行为（空列表 seed 四个 / 已有角色不重复 seed / 不写入 roles），storage 测试扩充至 14 例
 
-**完成判据**：首次启动有四个默认角色且 prompt 非空；可编辑/删除默认角色；删除后可通过"恢复默认"补回；三门禁全绿（158 tests passed）。
+**完成判据**：首次启动有五个默认角色且 prompt 非空；可编辑/删除默认角色；删除后可通过"恢复默认"补回；三门禁全绿。
 
 ## 4. LLM 客户端（对应 T1.4）
 
