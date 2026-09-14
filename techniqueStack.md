@@ -9,19 +9,20 @@
 
 ## 1. 选型总表
 
-| # | 决策点 | 选择 | 核心理由 | 落选者及原因 |
-|---|---|---|---|---|
-| 1 | 扩展构建框架 | **WXT**（wxt.dev） | 一等公民支持 MV3 + 多入口（sidepanel / content / background / 自定义页），自动生成 manifest、HMR、按目标浏览器打包；2026 年社区主流 | CRXJS（维护放缓）；纯手写 manifest（多入口维护成本高） |
-| 2 | 语言 | **TypeScript**（strict） | 配置对象/存储 schema 必须有类型守护 | — |
-| 3 | UI 框架 | **React 18** | 生态与可参考组件最多 | Svelte（生态小） |
-| 4 | 状态管理 | **zustand** | 轻量；便于与 chrome.storage 写"storage 为唯一真相源"的同步层 | Redux（样板多） |
-| 5 | 样式 | **Tailwind CSS v4** | 窄面板快速布局；深浅色主题用 dark: 变体 | CSS Modules（写得慢） |
-| 6 | Markdown 渲染 | **react-markdown + remark-gfm + rehype-highlight** | 流式部分文档重渲染成本低；高亮开箱即用 | 自写解析器 |
-| 7 | 持久化 | **chrome.storage.local** | 无云同步面，API Key 不出本机（NFR-2） | storage.sync（会把 Key 同步上云） |
-| 8 | LLM 调用发起位置 | **扩展页面（sidepanel / PDF 页）内 fetch** | 规避 MV3 Service Worker ~30s 空闲生命周期对流式长连接的杀进程风险 | background 发起（需额外 keep-alive，复杂且脆） |
-| 9 | 打包/包体 | Vite（WXT 内置） | — | — |
-| 10 | 界面 i18n（中英切换，M6） | **自研轻量字典**：`locales/zh-CN.ts` · `en-US.ts` + `useT()` hook | UI 文案量级小（数百条）、零运行时依赖；typed dictionary 缺 key 即编译错误 | i18next（生态标准但本项目体量用不上）；chrome.i18n `_locales`（绑定浏览器语言、与 React 侧文案两套体系） |
-| 11 | 测试框架与分层 | **vitest**（单测）+ **@webext-core/mocks**（`mockBrowser` 批量 mock chrome API）+ **@testing-library/react**（组件测试，M1 后引入）+ **Playwright**（E2E，M3 后引入） | vitest 与 Vite/WXT 同构零配置；`mockBrowser` 覆盖 storage/runtime/sidePanel 等全部用到的 API，避免手写字段遗漏；组件测试等交互稳定后再加；E2E 只覆盖关键路径冒烟 | Jest（需额外配 TS/ESM）；手动 mock chrome API（字段易遗漏、维护成本高）；Puppeteer（扩展加载支持不如 Playwright 直观） |
+
+| #  | 决策点                    | 选择                                                                                                                                                                  | 核心理由                                                                                                                                                         | 落选者及原因                                                                                                           |
+| -- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1  | 扩展构建框架              | **WXT**（wxt.dev）                                                                                                                                                    | 一等公民支持 MV3 + 多入口（sidepanel / content / background / 自定义页），自动生成 manifest、HMR、按目标浏览器打包；2026 年社区主流                              | CRXJS（维护放缓）；纯手写 manifest（多入口维护成本高）                                                                 |
+| 2  | 语言                      | **TypeScript**（strict）                                                                                                                                              | 配置对象/存储 schema 必须有类型守护                                                                                                                              | —                                                                                                                     |
+| 3  | UI 框架                   | **React 18**                                                                                                                                                          | 生态与可参考组件最多                                                                                                                                             | Svelte（生态小）                                                                                                       |
+| 4  | 状态管理                  | **zustand**                                                                                                                                                           | 轻量；便于与 chrome.storage 写"storage 为唯一真相源"的同步层                                                                                                     | Redux（样板多）                                                                                                        |
+| 5  | 样式                      | **Tailwind CSS v4**                                                                                                                                                   | 窄面板快速布局；深浅色主题用 dark: 变体                                                                                                                          | CSS Modules（写得慢）                                                                                                  |
+| 6  | Markdown 渲染             | **react-markdown + remark-gfm + rehype-highlight**                                                                                                                    | 流式部分文档重渲染成本低；高亮开箱即用                                                                                                                           | 自写解析器                                                                                                             |
+| 7  | 持久化                    | **chrome.storage.local**                                                                                                                                              | 无云同步面，API Key 不出本机（NFR-2）                                                                                                                            | storage.sync（会把 Key 同步上云）                                                                                      |
+| 8  | LLM 调用发起位置          | **扩展页面（sidepanel / PDF 页）内 fetch**                                                                                                                            | 规避 MV3 Service Worker ~30s 空闲生命周期对流式长连接的杀进程风险                                                                                                | background 发起（需额外 keep-alive，复杂且脆）                                                                         |
+| 9  | 打包/包体                 | Vite（WXT 内置）                                                                                                                                                      | —                                                                                                                                                               | —                                                                                                                     |
+| 10 | 界面 i18n（中英切换，M6） | **自研轻量字典**：`locales/zh-CN.ts` · `en-US.ts` + `useT()` hook                                                                                                    | UI 文案量级小（数百条）、零运行时依赖；typed dictionary 缺 key 即编译错误                                                                                        | i18next（生态标准但本项目体量用不上）；chrome.i18n`_locales`（绑定浏览器语言、与 React 侧文案两套体系）                |
+| 11 | 测试框架与分层            | **vitest**（单测）+ **WXT 内置 `wxt/testing/fake-browser`**（`fakeBrowser` 批量 mock chrome API）+ **@testing-library/react**（组件测试，M1 后引入）+ **Playwright**（E2E，M3 后引入） | vitest 与 Vite/WXT 同构零配置；`fakeBrowser` 覆盖 storage/runtime/sidePanel 等全部用到的 API，避免手写字段遗漏；WXT 内置 re-export 同包，零额外依赖；组件测试等交互稳定后再加；E2E 只覆盖关键路径冒烟 | Jest（需额外配 TS/ESM）；手动 mock chrome API（字段易遗漏、维护成本高）；Puppeteer（扩展加载支持不如 Playwright 直观） |
 
 ## 2. 架构总览
 
@@ -176,13 +177,14 @@ type StoredPart =
 
 ### 8.2 上下文供给（Context Supply，FR-2.5 的实现面）
 
-| 档位 | 采集方式 | 数据来源 |
-|---|---|---|
-| 仅选区 | selection.toString() | 现有划词链路 |
-| 选区 ± 相邻段落 | Range 向外扩到最近块级元素边界，前后各 N 段（N=1）合并 | content script，无新依赖 |
-| 附整页正文 | readability 正文抽取，动态 import，仅该档位时采集 | content script |
-| 附 PDF 全文 | pdf.js getTextContent 拼装（>50 页仅取当前页 ±5 页并标注截断） | viewer 页，数据天然在手 |
-| 附图（FR-2.6，D-010） | 右键图片(srcUrl+alt)；供给范围内 `img.currentSrc`；PDF 页 canvas 渲染(DPR×2) | content script/viewer 上报 URL，side panel 归一化 |
+
+| 档位                  | 采集方式                                                                     | 数据来源                                          |
+| --------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------- |
+| 仅选区                | selection.toString()                                                         | 现有划词链路                                      |
+| 选区 ± 相邻段落      | Range 向外扩到最近块级元素边界，前后各 N 段（N=1）合并                       | content script，无新依赖                          |
+| 附整页正文            | readability 正文抽取，动态 import，仅该档位时采集                            | content script                                    |
+| 附 PDF 全文           | pdf.js getTextContent 拼装（>50 页仅取当前页 ±5 页并标注截断）              | viewer 页，数据天然在手                           |
+| 附图（FR-2.6，D-010） | 右键图片(srcUrl+alt)；供给范围内`img.currentSrc`；PDF 页 canvas 渲染(DPR×2) | content script/viewer 上报 URL，side panel 归一化 |
 
 - 任一非"仅选区"档位的采集结果与选区一并进入素材卡片（分栏/折叠展示"将发送的内容"），**先经 token 预览/限额治理（§7）再发送**，无黑箱。
 - "附整页正文"在非正文型站点提取失败时，降级为"仅选区"并在卡片显著标注"整页提取失败，仅发送选区"，不静默降级。
@@ -202,6 +204,7 @@ type StoredPart =
 ## 10. 工程化
 
 - 目录（WXT 约定）：
+
 ```
 ├ entrypoints/           # sidepanel/ · background/ · content/ · viewer(pdf) · options(复用sidepanel路由)
 ├ components/            # React 组件（按 §4 层级）
@@ -211,31 +214,61 @@ type StoredPart =
 ├ assets/ specs/         # 复用样式；每个里程碑的功能 spec（见 roadmap §1）
 └ tests/
 ```
+
 - 质量门禁（CI/本地 pre-commit 同一命令集）：`tsc --noEmit` · `eslint` · `vitest run`。
 - **测试规范（四层金字塔，roadmap §1 DoD 强制）**：
 
-  | 层级 | 测什么 | 工具 | 环境 | 目录 | 占比 |
-  |---|---|---|---|---|---|
-  | L1 core 域层单测 | 纯函数：token 估算、prompt 组装、消息 parts 化、schema 迁移、角色指令合并、上下文供给组装 | vitest | node | `tests/core/` | ~60% |
-  | L2 infra 层单测 | SSE 解析、storage 同步、消息封装、图片归一化 | vitest + `vi.mock` + `@webext-core/mocks` 的 `mockBrowser` | node | `tests/infra/` | ~20% |
-  | L3 组件测试 | Composer / MessageList / TokenStatusBar / MaterialCard 的渲染与交互 | @testing-library/react + user-event（M1 后引入） | jsdom | `tests/components/` | ~15% |
-  | L4 E2E 冒烟 | 真实 Chrome 加载扩展：划词→侧边栏打开→流式应答关键路径 | Playwright（M3 后引入） | 真实 Chrome | `e2e/` | ~5% |
 
-  - **L2 mock 方案（ADR-009）**：采用 `vi.mock` 直接 mock + `@webext-core/mocks` 的 `mockBrowser` 批量替身，不做依赖注入。示例：
+  | 层级             | 测什么                                                                                    | 工具                                                      | 环境        | 目录                | 占比 |
+  | ---------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- | ----------- | ------------------- | ---- |
+  | L1 core 域层单测 | 纯函数：token 估算、prompt 组装、消息 parts 化、schema 迁移、角色指令合并、上下文供给组装 | vitest                                                    | node        | `tests/core/`       | ~60% |
+  | L2 infra 层单测  | SSE 解析、storage 同步、消息封装、图片归一化、entrypoints 行为 | vitest + WXT 内置 `wxt/testing/fake-browser`（`fakeBrowser`）；entrypoints 用 `vi.stubGlobal`，infra 模块用 `vi.mock` | node        | `tests/infra/`      | ~20% |
+  | L3 组件测试      | Composer / MessageList / TokenStatusBar / MaterialCard 的渲染与交互                       | @testing-library/react + user-event（M1 后引入）          | jsdom       | `tests/components/` | ~15% |
+  | L4 E2E 冒烟      | 真实 Chrome 加载扩展：划词→侧边栏打开→流式应答关键路径                                  | Playwright（M3 后引入）                                   | 真实 Chrome | `e2e/`              | ~5%  |
+
+
+  - **L2 mock 方案（ADR-009）**：用 WXT 内置 `wxt/testing/fake-browser` 的 `fakeBrowser`，不做依赖注入、不单独装包。按被测代码类型分两种 mock 方式：
+
+    **场景 A：WXT entrypoints**（`entrypoints/background.ts`、`content.ts`、`sidepanel/` 等）——`browser` 和 `defineBackground`/`defineContentScript` 是 WXT 构建时**全局注入**的，不是模块导入，必须用 `vi.stubGlobal`：
     ```ts
-    import { mockBrowser } from '@webext-core/mocks';
     import { describe, it, expect, beforeEach, vi } from 'vitest';
+    import { fakeBrowser } from 'wxt/testing/fake-browser';
 
-    vi.mock('wxt/browser', () => ({ default: mockBrowser }));
+    beforeEach(() => {
+      vi.resetModules(); // 清除动态 import 缓存，确保每次重新执行 entrypoint 顶层代码
+      fakeBrowser.reset();
+      vi.stubGlobal('browser', fakeBrowser);
+      vi.stubGlobal('defineBackground', (fn: () => void) => fn());
+    });
 
-    beforeEach(() => mockBrowser.reset());
-
-    it('storage 同步层读写', async () => {
-      mockBrowser.storage.local.get.mockResolvedValue({ 'at:roles': [] });
-      // ... 调用被测函数，断言 mockBrowser.storage.local.set 被调用
+    it('点击图标打开侧边栏', async () => {
+      const openSpy = vi.spyOn(fakeBrowser.sidePanel, 'open').mockResolvedValue(undefined);
+      await import('../../entrypoints/background');
+      // fake-browser 事件用 .trigger() 触发（不是 vi.fn，没有 .mock）
+      await fakeBrowser.action.onClicked.trigger({ windowId: 42 } as never);
+      expect(openSpy).toHaveBeenCalledWith({ windowId: 42 });
     });
     ```
-    `mockBrowser` 覆盖本项目用到的全部 chrome API：`storage.local.get/set`、`storage.onChanged`、`runtime.sendMessage/onMessage`、`sidePanel.open`、`contextMenus`、`commands`、`webNavigation`。
+
+    **场景 B：infra 模块**（`infra/storage/`、`infra/browser/` 等显式 `import browser from 'wxt/browser'` 的模块）——用 `vi.mock`：
+    ```ts
+    import { fakeBrowser } from 'wxt/testing/fake-browser';
+    import { beforeEach, vi } from 'vitest';
+
+    vi.mock('wxt/browser', () => ({ default: fakeBrowser }));
+
+    beforeEach(() => fakeBrowser.reset());
+
+    it('storage 同步层读写', async () => {
+      // fake-browser 方法不是 vi.fn()，需用 vi.spyOn 追踪或 mockResolvedValue
+      vi.spyOn(fakeBrowser.storage.local, 'get').mockResolvedValue({ 'at:roles': [] });
+      // ... 调用被测函数，断言 fakeBrowser.storage.local.set 被调用
+    });
+    ```
+
+    **fake-browser API 要点**：事件（`onClicked`、`onMessage`、`onChanged` 等）用 `.trigger(...args)` 触发监听器、`.hasListeners()` 检查注册、`.removeAllListeners()` 清除；方法（`open`、`get`、`set`、`sendMessage` 等）用 `vi.spyOn(obj, 'method')` 追踪调用和设置返回值（不是 `vi.fn()`，没有 `.mock`/`.mockResolvedValue` 属性）。
+
+    `fakeBrowser` 覆盖本项目用到的全部 chrome API：`storage.local.get/set`、`storage.onChanged`、`runtime.sendMessage/onMessage`、`sidePanel.open`、`action.onClicked`、`contextMenus`、`commands`、`webNavigation`。
   - **vitest 环境切换**：默认 `environment: 'node'`（L1/L2）；L3 组件测试在文件顶部加 `// @vitest-environment jsdom` 逐文件切换（vitest 5 已移除 `environmentMatchGlobs`，不拆 projects 配置以保持简洁）。
   - **文件命名**：`<被测模块名>.test.ts`（或 `.test.tsx`），与源码模块一一对应；测试内 `describe` 用模块名，`it` 用行为描述（"空字符串返回 0"而非"test1"）。
   - **边界用例强制清单**（核心模块必须覆盖，否则 T*.x 不得勾选）：
@@ -251,21 +284,22 @@ type StoredPart =
 
 ## 11. 风险与对策
 
-| 风险 | 等级 | 对策 |
-|---|---|---|
-| MV3 SW 生命周期杀掉长流式连接 | 高 | 已规避：流式 fetch 放扩展页面（选型 #8） |
-| 各家"OpenAI 兼容"实为方言（usage 字段、reasoning 字段、未知字段 400） | 高 | §6 的探测+自动降级重试；错误分类给中文提示；spec 中列出已验证端点清单 |
-| `<all_urls>` 引发商店/用户顾虑 | 中 | NFR-2 中如实声明用途；上架前评估 optional_host_permissions（开放问题 Q5） |
-| pdf.js 在扩展页的体积与二次打包 | 中 | 动态 import，仅 viewer 入口加载 |
-| Token 估算偏差导致用户误判成本 | 中 | 精确优先、估算必带"≈"与口径说明；M5 提供校准（含图片公式） |
-| 浮动按钮与站点样式/脚本冲突 | 中 | Shadow DOM 封装；不内联注入全局样式；z-index 高位但仅限浮层节点 |
-| readability 在"非正文型"页面（Web App、代码站）提取失败或抽出导航噪声 | 中 | 失败降级为"仅选区"并显著标注（§8.2）；提取结果先入素材卡片可见，无黑箱；GFM 站外链接不额外抓取 |
-| 基础指令与个别角色提示词冲突（如角色自带"直接作答不许反问"） | 低 | 拼装顺序角色在前、基础指令在后（§6）；冲突时以"列出缺失清单但继续回答"为语义兜底；用户可全局关闭（FR-1.6） |
-| vision 开关与模型实际能力不符（勾选错误 → 400 或图片被静默忽略） | 中 | 错误分类给出中文引导；素材含图而未开启时红条禁发、开启后请求含图即有响应差异可验证（FR-4.6） |
-| 图片导致存储与历史请求体膨胀（多轮重发累积） | 中 | 归一化控制单图体积（§6）；二进制走 IndexedDB；压缩历史可把早期图片剥离为占位文本（roadmap M5 T5.2） |
-| 图片内文字构成提示注入面（页面图含恶意指令文本） | 低 | 无工具执行面，最坏仅影响回答倾向；素材卡片所见即所发；基础指令"不得编造/说明来源"条款兜底 |
-| storage.local 容量（10MB 上限）与会话膨胀 | 低 | 会话文本存 storage，图片二进制分置 IndexedDB（§5）；文本超限清理策略列入开放问题 Q6 |
-| Chrome 114 之前版本 | 低 | manifest `minimum_chrome_version`，安装即拦截 |
+
+| 风险                                                                  | 等级 | 对策                                                                                                        |
+| --------------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------- |
+| MV3 SW 生命周期杀掉长流式连接                                         | 高   | 已规避：流式 fetch 放扩展页面（选型 #8）                                                                    |
+| 各家"OpenAI 兼容"实为方言（usage 字段、reasoning 字段、未知字段 400） | 高   | §6 的探测+自动降级重试；错误分类给中文提示；spec 中列出已验证端点清单                                      |
+| `<all_urls>` 引发商店/用户顾虑                                        | 中   | NFR-2 中如实声明用途；上架前评估 optional_host_permissions（开放问题 Q5）                                   |
+| pdf.js 在扩展页的体积与二次打包                                       | 中   | 动态 import，仅 viewer 入口加载                                                                             |
+| Token 估算偏差导致用户误判成本                                        | 中   | 精确优先、估算必带"≈"与口径说明；M5 提供校准（含图片公式）                                                 |
+| 浮动按钮与站点样式/脚本冲突                                           | 中   | Shadow DOM 封装；不内联注入全局样式；z-index 高位但仅限浮层节点                                             |
+| readability 在"非正文型"页面（Web App、代码站）提取失败或抽出导航噪声 | 中   | 失败降级为"仅选区"并显著标注（§8.2）；提取结果先入素材卡片可见，无黑箱；GFM 站外链接不额外抓取             |
+| 基础指令与个别角色提示词冲突（如角色自带"直接作答不许反问"）          | 低   | 拼装顺序角色在前、基础指令在后（§6）；冲突时以"列出缺失清单但继续回答"为语义兜底；用户可全局关闭（FR-1.6） |
+| vision 开关与模型实际能力不符（勾选错误 → 400 或图片被静默忽略）     | 中   | 错误分类给出中文引导；素材含图而未开启时红条禁发、开启后请求含图即有响应差异可验证（FR-4.6）                |
+| 图片导致存储与历史请求体膨胀（多轮重发累积）                          | 中   | 归一化控制单图体积（§6）；二进制走 IndexedDB；压缩历史可把早期图片剥离为占位文本（roadmap M5 T5.2）        |
+| 图片内文字构成提示注入面（页面图含恶意指令文本）                      | 低   | 无工具执行面，最坏仅影响回答倾向；素材卡片所见即所发；基础指令"不得编造/说明来源"条款兜底                   |
+| storage.local 容量（10MB 上限）与会话膨胀                             | 低   | 会话文本存 storage，图片二进制分置 IndexedDB（§5）；文本超限清理策略列入开放问题 Q6                        |
+| Chrome 114 之前版本                                                   | 低   | manifest`minimum_chrome_version`，安装即拦截                                                                |
 
 ## 12. ADR 索引
 
@@ -277,4 +311,4 @@ type StoredPart =
 - **ADR-006 前端状态以 storage 为唯一真相源**：SW/面板/查看页多上下文一致性靠 onChanged 广播，不靠内存同步。
 - **ADR-007 信息缺口用提示词层解决，不引入工具层**（2026-09-13 评审）：信息不完整的需求以三件事闭环——FR-1.6 基础指令（AI 声明缺失清单）、多轮会话 + FR-2.5 上下文供给（用户补足信息）、素材卡片透明可见（无黑箱）。不做 tool calling：OpenAI 兼容端点对工具支持参差、引入 prompt injection 面与确认交互成本。待真实使用反馈证明"声明缺口"不够用后再重评（届时进入 M6 候选池）。
 - **ADR-008 图片输入只在扩展侧归一，二进制分置 IndexedDB**（2026-09-13，D-010）：content script/viewer 只上报 URL，由 side panel 统一取回、降采样（长边 ≤1568px → JPEG）、以 `data:` URL 内联发送——不要求端点回源抓图（NFR-2"仅两方"）；图片字节不入 storage.local；音频/视频维持 out of scope。
-- **ADR-009 测试分层为四层金字塔，L2 采用 vi.mock + mockBrowser 而非依赖注入**（2026-09-14）：Chrome 扩展多上下文、强依赖 chrome API，测试策略按"越底层越纯、越容易测"组织——L1 core 纯函数（node，~60%）、L2 infra  mock chrome（node，~20%）、L3 组件（jsdom，~15%）、L4 E2E（真实 Chrome，~5%，M3 后引入）。L2 不做依赖注入（方案 A）而用 `vi.mock('wxt/browser')` + `@webext-core/mocks` 的 `mockBrowser`（方案 B）：项目 infra 层薄、规模小，方案 B 写得快且与 WXT 生态一致；`mockBrowser` 提供完整 API 替身，避免手写字段遗漏。代价是 mock 与实现耦合紧，若 chrome API 调用方式大改需同步更新 mock——但本项目 API 接触面稳定，可接受。
+- **ADR-009 测试分层为四层金字塔，L2 采用 fakeBrowser + vi.stubGlobal/vi.mock 而非依赖注入**（2026-09-14，2026-09-14 修订）：Chrome 扩展多上下文、强依赖 chrome API，测试策略按"越底层越纯、越容易测"组织——L1 core 纯函数（node，~60%）、L2 infra mock chrome（node，~20%）、L3 组件（jsdom，~15%）、L4 E2E（真实 Chrome，~5%，M3 后引入）。L2 不做依赖注入（方案 A）而用 WXT 内置 `wxt/testing/fake-browser` 的 `fakeBrowser`（方案 B）：项目 infra 层薄、规模小，方案 B 写得快且与 WXT 生态一致；`fakeBrowser` 提供完整 API 替身，避免手写字段遗漏。按被测代码类型分两种 mock 方式：**entrypoints**（background/content/sidepanel）的 `browser`/`defineBackground` 是 WXT 全局注入，用 `vi.stubGlobal` + 动态 import + `vi.resetModules()`；**infra 模块**（显式 import `wxt/browser`）用 `vi.mock('wxt/browser')`。fake-browser 事件用 `.trigger()` 触发、方法用 `vi.spyOn` 追踪（不是 vi.fn()）。代价是 mock 与实现耦合紧，若 chrome API 调用方式大改需同步更新 mock——但本项目 API 接触面稳定，可接受。

@@ -13,7 +13,7 @@
 
 - 每个里程碑开工前先出目录 `specs/<YYYYMMDD>-<slug>/`（与分支同名），三件套：`requirements.md`（背景 / 范围 / 决策 / 上下文）、`plan.md`（编号任务组，对齐 roadmap 的 T*.x）、`validation.md`（验收与合并判据）。模板见 [specs/TEMPLATE.md](specs/TEMPLATE.md)。
 - 评审通过才动代码；实现中发现与 spec 不符，**先改 spec 再改码**。
-- 完成一项即勾选 `plan.md` 并回勾 `roadmap.md`；**勾选前确认对应测试已写完且 `pnpm test` 全绿**（测试规范见 techniqueStack §10 四层金字塔；L2 infra 用 `vi.mock` + `@webext-core/mocks` 的 `mockBrowser`）；里程碑收尾在 roadmap §10 追加一行变更记录。
+- 完成一项即勾选 `plan.md` 并回勾 `roadmap.md`；**勾选前确认对应测试已写完且 `pnpm test` 全绿**（测试规范见 techniqueStack §10 四层金字塔；L2 infra 用 WXT 内置 `wxt/testing/fake-browser` 的 `fakeBrowser`，entrypoints 用 `vi.stubGlobal`、infra 模块用 `vi.mock`）；里程碑收尾在 roadmap §10 追加一行变更记录。
 - 合并门槛：门禁全绿 + 每个 T*.x 对应测试通过 + roadmap 验收清单人工核验。
 
 ## Chrome 扩展开发约定
