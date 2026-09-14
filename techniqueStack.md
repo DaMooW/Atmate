@@ -99,7 +99,7 @@ interface ApiConfig {
   vision: boolean;          // 该模型是否支持图片输入，默认 false（FR-4.6，D-010）
 }
 
-interface Role { id: string; name: string; systemPrompt: string; icon?: string; builtin: boolean; }
+interface Role { id: string; name: string; systemPrompt: string; icon?: string; builtin: boolean; }  // builtin 仅为"是否来自默认 seed"的元数据标记，不阻止编辑/删除；默认角色首次启动 seed 后与普通角色同等可操作
 
 interface MsgSource { type: 'page' | 'pdf' | 'manual'; title?: string; url?: string; }
 
@@ -145,7 +145,7 @@ type StoredPart =
   - 事件回调：`onContent / onReasoning / onUsage / onDone / onError`；AbortController 实现"停止生成"。
 - **错误分类**：`401/403`（Key 问题）、`404`（Base URL/模型 ID 问题）、`429`（限流）、5xx、网络中断、SSE 中途断流——各自给中文可读提示与重试入口（NFR-4）。
 - **usage 采集**：流式响应若带 usage，取 `total_tokens` 计入会话累计；无则该会话标记"估算模式"。
-- **system 拼装顺序**（§8.1 基础指令的落地点）：`system = 角色提示词` +（开启时）`\n\n` + `基础指令段`。基础指令段为单一字符串常量（`core/directive.ts`），内容要求实现 mission FR-1.6 的三条（完备性判断 / 缺失清单 / 不编造）；版本化（`DIRECTIVE_V1`），改文案须升版本，历史会话按当时版本存储的副本渲染。
+- **system 拼装顺序**（§8.1 基础指令的落地点）：`system = 角色提示词` +（开启时）`\n\n` + `基础指令段`。基础指令段文本外置在 `prompts/directive-v1.md`，由 `core/directive.ts` 通过 Vite `?raw` 导入为版本化常量（`DIRECTIVE_V1`），内容要求实现 mission FR-1.6 的三条（完备性判断 / 缺失清单 / 不编造）；改文案须升版本，历史会话按当时版本存储的副本渲染。内置角色 prompt 同样外置在 `prompts/roles/*.md`，首次启动 seed 时读入 storage。
 - **图片消息构造**（M4，D-010）：素材含图时 user content 组装为 parts 数组（text / image_url 交替，`image_url` 为 data URL）；历史消息中的图片按原样重发（token 成本随之增长，剥离治理见 roadmap M5 T5.2）；`vision` 未开启而素材含图 → 拦截发送并引导（mission FR-4.6）。
 - **图片归一化管线**（side panel 内执行，content script/viewer 只上报 URL，不取字节）：`fetch(srcUrl)` → `ImageBitmap` → OffscreenCanvas 缩放（长边 ≤1568px）→ 重编码 JPEG（q 0.85）→ `data:` URL；同一 URL 会话内去重缓存。选区供给附图解析 `img.currentSrc`（已解析懒加载/srcset 的真实源）。
 
@@ -172,7 +172,7 @@ type StoredPart =
 
 ### 8.1 基础指令（Base Directive，FR-1.6 的实现面）
 
-- 文案为 `core/directive.ts` 中的版本化常量（`DIRECTIVE_V1`）；设置页提供开关（存 `at:uiPrefs.baseDirectiveEnabled`，默认 true），下一次发送生效，不追溯已发生的请求。
+- 文案外置在 `prompts/directive-v1.md`，由 `core/directive.ts` 通过 Vite `?raw` 导入为版本化常量（`DIRECTIVE_V1`）；设置页提供开关（存 `at:uiPrefs.baseDirectiveEnabled`，默认 true），下一次发送生效，不追溯已发生的请求。
 - 注入位置在 LLM 客户端拼装 system 时（§6）；UI 不把它显示为独立消息；会话导出（M5）时按实际发送内容附注。
 
 ### 8.2 上下文供给（Context Supply，FR-2.5 的实现面）
@@ -208,8 +208,9 @@ type StoredPart =
 ```
 ├ entrypoints/           # sidepanel/ · background/ · content/ · viewer(pdf) · options(复用sidepanel路由)
 ├ components/            # React 组件（按 §4 层级）
-├ core/                  # 域层：session/role/apiConfig/tokens/directive（纯函数，可单测）
+├ core/                  # 域层：session/role/apiConfig/tokens/directive/modelCapabilities（纯函数，可单测）
 ├ infra/                 # llm(客户端+SSE) · storage(同步层+schema迁移+images IDB) · browser(消息封装)
+├ prompts/               # 外置 prompt 文本：roles/*.md（默认角色 system prompt）· directive-v1.md（基础指令）；代码通过 ?raw 导入
 ├ locales/               # zh-CN.ts · en-US.ts：typed 文案字典（§1 #10，M6 上线）
 ├ assets/ specs/         # 复用样式；每个里程碑的功能 spec（见 roadmap §1）
 └ tests/

@@ -13,6 +13,7 @@
 - [ ] 1.3 nanoid 引入（或自写短 ID 生成器，零依赖优先）；ID 生成纯函数 + 单测
 - [ ] 1.4 storage 同步层 `createStorageStore`：启动一次性装载所有 `at:*` 键 → 内存 store；写操作 → `storage.local.set` → `onChanged` 回流广播；多上下文一致
 - [ ] 1.5 初始状态：无数据时生成默认 uiPrefs（baseDirectiveEnabled=true）、空 apiConfigs/roles/sessions
+- [ ] 1.6 目录结构就绪：创建 `prompts/`（含 `roles/` 子目录）、`core/`、`infra/`、`tests/core/`、`tests/infra/` 目录（tech §10）；Vite `?raw` 导入类型声明（`vite-env.d.ts` 或 `wxt.d.ts` 中声明 `*?raw` 模块）
 - [ ] 1.6 **L1 单测**：ID 生成唯一性/长度、schema 迁移（v1 直通、未知版本报错）、初始状态生成
 - [ ] 1.7 **L2 单测**：storage 同步层读写（`vi.mock('wxt/browser')` + fakeBrowser）、onChanged 回流
 - [ ] 1.8 manifest 新增 `storage` 权限（D6）；`CHROMEWEBSTORE.md` 同步记录权限理由
@@ -21,34 +22,39 @@
 
 ## 2. 设置视图·API 配置（对应 T1.2）
 
-**目标**：用户可完整管理多套 API 配置，含思维强度映射与连接测试。
+**目标**：用户可完整管理多套 API 配置，含思维强度模型能力推荐与连接测试。
 
 - [ ] 2.1 API 配置列表：展示所有配置，高亮激活项，支持切换激活
 - [ ] 2.2 新建/编辑表单：name / baseUrl / apiKey（脱敏输入）/ modelId / contextLimit / thinking / collectUsage；字段校验（URL 格式、必填、contextLimit 为正整数）
 - [ ] 2.3 删除配置：确认弹窗；删除激活项时激活态置空
-- [ ] 2.4 思维强度三映射 UI：`reasoning_effort`（值表：light/medium/deep → 字符串）/ `budget_tokens`（值表：数字）/ custom（JSON 模板 + `{{level}}` 插值提示）；档位 off/light/medium/deep
-- [ ] 2.5 contextLimit 预填表：`modelId → limit` 映射（收录 gpt-* / claude-* / glm-* / deepseek-* / kimi-* / 聚合站 org/model 命名）；命中自动填，未命中手填必填
-- [ ] 2.6 连接测试按钮：发送最小请求（`messages: [{role:'user', content:'hi'}]`，非流式），成功/失败反馈
-- [ ] 2.7 apiKey UI 脱敏：默认 `••••`，点击显示/隐藏；不写入 console
-- [ ] 2.8 **L1 单测**：字段校验函数（URL/必填/数值范围）、思维强度映射构造（三种 mapping × 四档位 = 12 种组合）、预填表命中逻辑
-- [ ] 2.9 **L2 单测**：连接测试的 fetch mock（成功/401/404/超时）
+- [ ] 2.4 **模型能力表** `core/modelCapabilities.ts`：预填常见模型的 `thinkingType / levels / defaultLevel`（D7，见 requirements §4.8）；支持精确匹配 + 前缀匹配
+- [ ] 2.5 思维强度 UI 动态推荐：选择 modelId 后自动设置 mapping 类型与 level 下拉选项；`none` 类型置灰并提示；用户可手动切换为 custom（JSON 模板 + `{{level}}` 插值）
+- [ ] 2.6 思维强度三映射实现：`reasoning_effort`（值表）/ `budget_tokens`（`thinking: {type:'enabled', budget_tokens}`）/ custom（模板插值）；档位 off/light/medium/deep
+- [ ] 2.7 contextLimit 预填表：`modelId → limit` 映射（收录 gpt-* / claude-* / glm-* / deepseek-* / kimi-* / 聚合站 org/model 命名）；命中自动填，未命中手填必填
+- [ ] 2.8 连接测试按钮：发送最小请求（`messages: [{role:'user', content:'hi'}]`，非流式），成功/失败反馈
+- [ ] 2.9 apiKey UI 脱敏：默认 `••••`，点击显示/隐藏；不写入 console
+- [ ] 2.10 **L1 单测**：字段校验函数（URL/必填/数值范围）、模型能力表匹配（精确/前缀/未命中）、思维强度映射构造（三种 mapping × 各档位）、预填表命中逻辑
+- [ ] 2.11 **L2 单测**：连接测试的 fetch mock（成功/401/404/超时）
 
-**完成判据**：可新建一套 DeepSeek 配置并通过连接测试；表单校验拦截非法输入；删除/切换正常。
+**完成判据**：选择 DeepSeek 模型后自动推荐 `reasoning_effort` + low/medium/high；选择不支持思维链的模型后开关置灰；可手动覆盖为 custom。
 
 ## 3. 设置视图·角色（对应 T1.3）
 
-**目标**：角色 CRUD 可用，四个内置角色带具体 system prompt，新建会话时选角色。
+**目标**：角色 CRUD 可用，四个默认角色首次启动 seed（prompt 外置），seed 后与普通角色同等可编辑/删除，提供恢复默认入口。
 
-- [ ] 3.1 `core/builtinRoles.ts`：定义四个内置角色（翻译官 / 摘要助手 / 代码审查员 / 学术解说员），含具体 system prompt（D2，文案见 requirements §4.4），`builtin: true`
-- [ ] 3.2 角色列表：展示所有角色（内置 + 自建），内置角色标"内置"角标，不可删除但可复制
-- [ ] 3.3 新建/编辑角色：name / systemPrompt（多行文本）/ icon（可选，先文字 emoji 或留空）/ description（可选）
-- [ ] 3.4 删除角色：仅自建可删；确认弹窗；删除后引用该角色的会话保留 roleId 但显示"角色已删除"
-- [ ] 3.5 复制角色：内置/自建均可复制为新自建角色
-- [ ] 3.6 新建会话时选择角色：弹窗或下拉，默认选中第一个；无角色时引导先创建
-- [ ] 3.7 **L1 单测**：内置角色数据完整性（四个都有非空 prompt）、角色 CRUD 纯函数（增删改查）
-- [ ] 3.8 **L2 单测**：角色持久化读写（fakeBrowser storage）
+- [ ] 3.1 `prompts/roles/` 目录：创建四个 `.md` 文件（translator / summarizer / code-reviewer / academic-explainer），写入具体 system prompt（D2 / D11，文案见 requirements §4.4）
+- [ ] 3.2 `core/builtinRoles.ts`：通过 `?raw` 导入四个 prompt 文件，导出默认角色元数据（id / name / description / promptSource）；不内嵌 prompt 文本
+- [ ] 3.3 首次启动 seed：storage 初始化时若 `at:roles` 为空，将四个默认角色写入（`builtin: true` 标记）；非首次不重复 seed
+- [ ] 3.4 角色列表：展示所有角色；`builtin: true` 的角色显示"默认"角标，但**操作权限与普通角色相同**（可编辑/删除/复制）
+- [ ] 3.5 新建/编辑角色：name / systemPrompt（多行文本）/ icon（可选）/ description（可选）
+- [ ] 3.6 删除角色：所有角色均可删（含默认角色）；确认弹窗；删除后引用该角色的会话保留 roleId 但显示"角色已删除"
+- [ ] 3.7 复制角色：所有角色均可复制为新角色（`builtin: false`）
+- [ ] 3.8 "恢复默认角色"入口：设置页角色区域提供按钮，仅 seed 列表中不存在的默认角色（不覆盖已有同名/同 id 角色）；全部存在时按钮置灰
+- [ ] 3.9 新建会话时选择角色：弹窗或下拉，默认选中第一个；无角色时引导先创建
+- [ ] 3.10 **L1 单测**：默认角色 prompt 导入非空、seed 逻辑（空列表 seed 四个 / 非空不重复）、恢复默认（缺失才补 / 已有不覆盖）、角色 CRUD 纯函数
+- [ ] 3.11 **L2 单测**：角色持久化读写（fakeBrowser storage）
 
-**完成判据**：四个内置角色可见且 prompt 非空；可自建/编辑/删除/复制角色；新建会话能选角色。
+**完成判据**：首次启动有四个默认角色且 prompt 非空；可编辑/删除默认角色；删除后可通过"恢复默认"补回；新建会话能选角色。
 
 ## 4. LLM 客户端（对应 T1.4）
 
@@ -129,16 +135,17 @@
 
 ## 9. 基础指令（对应 T1.9）
 
-**目标**：FR-1.6 全局基础指令落地，开关可控，system 拼装正确。
+**目标**：FR-1.6 全局基础指令落地，开关可控，system 拼装正确，prompt 文本外置。
 
-- [ ] 9.1 `core/directive.ts`：`DIRECTIVE_V1` 常量，内容实现三条：①信息完备性判断 ②不足时先答后列缺失清单 ③不得编造
-- [ ] 9.2 设置·偏好页：基础指令开关（默认开），存 `at:uiPrefs.baseDirectiveEnabled`
-- [ ] 9.3 LLM 客户端 system 拼装：`system = 角色提示词` +（开启时）`\n\n` + `DIRECTIVE_V1`（tech §6 / §8.1）
-- [ ] 9.4 开关变更后下一次发送生效，不追溯已发生请求
-- [ ] 9.5 **L1 单测**：拼装顺序（角色在前、指令在后）、开关关闭不追加、DIRECTIVE_V1 内容包含三条关键词
-- [ ] 9.6 **L2 单测**：开关持久化（fakeBrowser storage）
+- [ ] 9.1 `prompts/directive-v1.md`：写入 DIRECTIVE_V1 完整文本（三条：完备性判断 / 缺失清单 / 不编造）（D11）
+- [ ] 9.2 `core/directive.ts`：通过 `?raw` 导入 `directive-v1.md`，导出 `DIRECTIVE_V1` 常量与版本号；不内嵌 prompt 文本
+- [ ] 9.3 设置·偏好页：基础指令开关（默认开），存 `at:uiPrefs.baseDirectiveEnabled`
+- [ ] 9.4 LLM 客户端 system 拼装：`system = 角色提示词` +（开启时）`\n\n` + `DIRECTIVE_V1`（tech §6 / §8.1）
+- [ ] 9.5 开关变更后下一次发送生效，不追溯已发生请求
+- [ ] 9.6 **L1 单测**：拼装顺序（角色在前、指令在后）、开关关闭不追加、DIRECTIVE_V1 内容包含三条关键词、prompt 文件导入非空
+- [ ] 9.7 **L2 单测**：开关持久化（fakeBrowser storage）
 
-**完成判据**：开启时请求体末尾含完备性三条款；关闭后不再追加（抓包或日志核对）。
+**完成判据**：开启时请求体末尾含完备性三条款；关闭后不再追加（抓包或日志核对）；prompt 文本在 `prompts/directive-v1.md` 中可独立编辑。
 
 ## 10. spec 归档（对应 T1.10）
 
