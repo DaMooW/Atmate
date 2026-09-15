@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 /**
  * 测试规范见 techniqueStack §10（四层金字塔）。
@@ -11,5 +12,11 @@ export default defineConfig({
     include: ['tests/**/*.test.{ts,tsx}'],
     passWithNoTests: false,
     environment: 'node',
+  },
+  resolve: {
+    alias: {
+      // WXT 项目中 `~` 指向项目根目录，测试时需同样配置
+      '~': fileURLToPath(new URL('.', import.meta.url)),
+    },
   },
 });
