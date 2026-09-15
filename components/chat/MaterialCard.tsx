@@ -28,6 +28,7 @@ const SOURCE_LABEL: Record<MaterialCardType['source'], string> = {
   'float-button': '浮动按钮',
   'context-menu': '右键菜单',
   'auto-fill': '自动填充',
+  'pdf-viewer': 'PDF 查看器',
 };
 
 /** 上下文档位选项（D20：默认 containing-paragraph） */
@@ -57,7 +58,11 @@ export function MaterialCard({ card, onRemove, onUpdate }: Props) {
             <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
               {SOURCE_LABEL[card.source]}
             </span>
-            <span className="truncate text-xs text-text-muted">{card.title || '无标题'}</span>
+            <span className="truncate text-xs text-text-muted">
+              {card.pdfMeta
+                ? `📄 ${card.pdfMeta.fileName} · 第 ${card.pdfMeta.pageNumber} 页`
+                : card.title || '无标题'}
+            </span>
           </div>
           {card.url && (
             <a
@@ -112,7 +117,7 @@ export function MaterialCard({ card, onRemove, onUpdate }: Props) {
         )}
       </div>
 
-      {/* 上下文档位切换（D20：默认所在段落） */}
+      {/* 上下文档位切换（D20：默认所在段落；M3：PDF 来源额外显示「附全文」档） */}
       <div className="mb-2 flex items-center gap-2">
         <span className="text-xs text-text-muted">上下文：</span>
         <div className="flex flex-wrap gap-1">
@@ -129,8 +134,46 @@ export function MaterialCard({ card, onRemove, onUpdate }: Props) {
               {opt.label}
             </button>
           ))}
+          {/* M3 T3.6：仅 PDF 来源的卡片显示「附全文」档 */}
+          {card.source === 'pdf-viewer' && (
+            <button
+              onClick={() => onUpdate(card.id, { contextScope: 'pdf-full' })}
+              className={`rounded px-2 py-0.5 text-xs ${
+                card.contextScope === 'pdf-full'
+                  ? 'bg-primary text-white'
+                  : 'bg-surface-hover text-text-muted hover:bg-surface'
+              }`}
+            >
+              附全文
+            </button>
+          )}
         </div>
       </div>
+
+      {/* M3 T3.6：pdf-full 档时显示全文预览或无文字层提示 */}
+      {card.contextScope === 'pdf-full' && (
+        <div className="mb-2 rounded bg-surface-2 p-2">
+          {card.contextData?.pdfNoTextLayer ? (
+            <p className="text-xs text-text-muted">
+              此 PDF 无文字层，无法提取全文。建议使用「附当前页为图片」功能（M4 上线后可用）。
+            </p>
+          ) : card.contextData?.pdfFull ? (
+            <>
+              {card.contextData.pdfFullTruncated && (
+                <p className="mb-1 text-xs text-text-muted">
+                  全文过长，已截取第 {card.contextData.pdfFullStartPage}-
+                  {card.contextData.pdfFullEndPage} 页
+                </p>
+              )}
+              <p className="max-h-24 overflow-y-auto text-xs whitespace-pre-wrap text-text-muted">
+                {card.contextData.pdfFull}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-text-muted">正在提取 PDF 全文…</p>
+          )}
+        </div>
+      )}
 
       {/* 底部：token 预览 + 发送时自动带入提示（D19） */}
       <div className="flex items-center justify-between">

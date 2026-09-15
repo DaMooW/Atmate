@@ -60,13 +60,14 @@ Chinese (Simplified)
 
 ## Permissions Justification
 
-<!-- 当前 manifest 声明 sidePanel + storage + contextMenus（M2，见 specs/20260915-m2-selection-integration）。 -->
+<!-- 当前 manifest 声明 sidePanel + storage + contextMenus + webNavigation（M3，见 specs/20260915-m3-pdf-support）。 -->
 
 | Permission | Type | Justification |
 |------------|------|---------------|
 | `sidePanel` | permissions | 本扩展的界面就是浏览器的侧边栏：划取的内容、AI 的回复和 token 用量都在侧边栏内展示。没有这项权限就无法显示主界面。 |
 | `storage` | permissions | 在本机保存会话历史、角色预设与 API 配置（含 API Key）。所有数据仅存 chrome.storage.local，不上云、不同步、不遥测（NFR-2）。 |
 | `contextMenus` | permissions | 提供"发送选中内容到在伴 AI 侧边栏"右键菜单项，作为浮动按钮的替代入口。用户选中文字后右键即可发送，无需寻找浮动按钮。 |
+| `webNavigation` | permissions | 检测用户打开 PDF 文件的导航事件，按用户偏好决定是否用扩展自建的 PDF 查看页接管（Chrome 原生 PDF 查看器不支持划词）。仅监听主框架导航，不读取页面内容。 |
 
 ### 计划追加（**尚未写入 manifest**，随对应里程碑申请，届时补写理由）
 

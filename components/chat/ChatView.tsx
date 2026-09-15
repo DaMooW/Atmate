@@ -96,6 +96,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
                   ...card,
                   text: payload.text,
                   contextData: payload.contextData,
+                  pdfMeta: payload.pdfMeta ?? card.pdfMeta,
                   createdAt: now, // 更新时间戳，便于后续连续划词继续合并
                 }
               : card,
@@ -111,6 +112,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
           source: payload.source,
           contextScope: uiPrefs.defaultContextScope,
           contextData: payload.contextData,
+          pdfMeta: payload.pdfMeta,
           adopted: true, // D18：创建后默认已采用
           createdAt: now,
         };

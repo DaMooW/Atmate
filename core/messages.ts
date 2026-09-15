@@ -14,7 +14,19 @@
  */
 
 /** 素材来源类型 */
-export type MaterialSource = 'float-button' | 'context-menu' | 'auto-fill';
+export type MaterialSource = 'float-button' | 'context-menu' | 'auto-fill' | 'pdf-viewer';
+
+/** PDF 元数据（M3 T3.4，随 viewer 页划词的 payload 携带） */
+export interface PdfMeta {
+  /** 文件名（从 URL 解析，decodeURIComponent） */
+  fileName: string;
+  /** 当前页码（1-based） */
+  pageNumber: number;
+  /** 总页数 */
+  totalPages: number;
+  /** 当前页是否为扫描件（无文字层） */
+  isScanned?: boolean;
+}
 
 /** 上下文供给档位 */
 export type ContextScope = 'selection' | 'nearby' | 'page';
@@ -33,6 +45,16 @@ export interface ContextData {
   fullPage?: string;
   /** readability 提取失败标记（page 档） */
   readabilityFailed?: boolean;
+  /** 附 PDF 全文（pdf-full 档，M3 T3.6） */
+  pdfFull?: string;
+  /** PDF 全文截断标记（pdf-full 档） */
+  pdfFullTruncated?: boolean;
+  /** PDF 全文截取起始页（pdf-full 档） */
+  pdfFullStartPage?: number;
+  /** PDF 全文截取结束页（pdf-full 档） */
+  pdfFullEndPage?: number;
+  /** PDF 无文字层标记（扫描件，pdf-full 档） */
+  pdfNoTextLayer?: boolean;
 }
 
 /** 选区消息 payload（content script → background） */
@@ -47,6 +69,8 @@ export interface SelectionSendPayload {
   source: MaterialSource;
   /** 上下文数据（T2.6 实现后填充，当前可选） */
   contextData?: ContextData;
+  /** PDF 元数据（M3 T3.4，仅 viewer 页划词时携带） */
+  pdfMeta?: PdfMeta;
 }
 
 /** content script → background: 划词后发送选区 */

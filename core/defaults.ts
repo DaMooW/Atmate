@@ -12,6 +12,7 @@ export const DEFAULT_UI_PREFS: UiPrefs = {
   baseDirectiveEnabled: true,
   defaultContextScope: 'containing-paragraph',
   locale: 'zh-CN',
+  pdfOpenMode: 'ask',
 };
 
 /**

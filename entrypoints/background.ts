@@ -1,6 +1,7 @@
 import { initPanelState } from './background/panel-state';
 import { initContextMenus } from './background/context-menus';
 import { handleMessage } from './background/messaging-router';
+import { initPdfNavigation } from './background/pdf-navigation';
 import type { ExtensionMessage, SelectionSendResponse } from '~/core/messages';
 
 export default defineBackground(() => {
@@ -9,6 +10,9 @@ export default defineBackground(() => {
 
   // M2 T2.3：初始化右键菜单
   initContextMenus();
+
+  // M3 T3.2：初始化 PDF 导航接管
+  initPdfNavigation();
 
   // M2 T2.5：消息路由监听（分流逻辑）
   browser.runtime.onMessage.addListener(
