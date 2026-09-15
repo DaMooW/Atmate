@@ -18,6 +18,7 @@ import {
   handleMessage,
 } from '../../entrypoints/background/messaging-router';
 import type { SelectionSendPayload, ExtensionMessage } from '../../core/messages';
+import { SIDEPANEL_PORT_NAME } from '../../core/messages';
 
 /**
  * L2 infra 层测试：background 消息路由与分流（M2 T2.5，D16）。
@@ -262,5 +263,141 @@ describe('background/messaging-router · handleMessage（统一入口）', () =>
     const result = handleMessage(message, sender, sendResponse);
     expect(result).toBe(false);
     expect(sendResponse).not.toHaveBeenCalled();
+  });
+});
+
+describe('background/messaging-router · 容错场景（M2 T2.5 补全）', () => {
+  it('同 Tab 重复发送（panelOpen=false）：只保留最新暂存，旧暂存被覆盖', () => {
+    const payload1 = makePayload({ text: 'first selection' });
+    const payload2 = makePayload({ text: 'second selection' });
+
+    // 第一次发送
+    handleSelectionSend(payload1);
+    expect(hasPending()).toBe(true);
+    expect(getPendingAndClear()?.text).toBe('first selection');
+
+    // 重新暂存第一次（因为 getPendingAndClear 清空了）
+    handleSelectionSend(payload1);
+    // 第二次发送，覆盖第一次
+    handleSelectionSend(payload2);
+
+    const pending = getPendingAndClear();
+    expect(pending?.text).toBe('second selection');
+    expect(hasPending()).toBe(false);
+  });
+
+  it('同 Tab 重复发送（panelOpen=true）：每次都直接转发，创建多张卡片', () => {
+    initPanelState(); // 注册 onConnect 监听器
+    const sendMessageSpy = vi
+      .spyOn(fakeBrowser.runtime, 'sendMessage')
+      .mockResolvedValue(undefined);
+
+    // 模拟 panelOpen=true
+    const port = { name: SIDEPANEL_PORT_NAME, onDisconnect: { addListener: vi.fn() } };
+    triggerConnect(port);
+
+    const payload1 = makePayload({ text: 'first' });
+    const payload2 = makePayload({ text: 'second' });
+
+    handleSelectionSend(payload1);
+    handleSelectionSend(payload2);
+
+    expect(sendMessageSpy).toHaveBeenCalledTimes(2);
+    expect(sendMessageSpy).toHaveBeenNthCalledWith(1, {
+      type: 'AT_SELECTION_DELIVER',
+      payload: payload1,
+    });
+    expect(sendMessageSpy).toHaveBeenNthCalledWith(2, {
+      type: 'AT_SELECTION_DELIVER',
+      payload: payload2,
+    });
+    expect(hasPending()).toBe(false);
+  });
+
+  it('超长选区：不截断，payload.text 保持完整（D6）', () => {
+    const longText = 'a'.repeat(100000); // 10 万字符
+    const payload = makePayload({ text: longText });
+
+    const response = handleSelectionSend(payload);
+    expect(response.delivered).toBe(false);
+    expect(response.showFloatButton).toBe(true);
+
+    const pending = getPendingAndClear();
+    expect(pending?.text).toBe(longText); // 不截断
+    expect(pending?.text.length).toBe(100000);
+  });
+
+  it('冷启动竞态：sidepanel 先 connect 再发 AT_PANEL_READY，暂存能正确转发', () => {
+    initPanelState(); // 注册 onConnect 监听器
+    const sendMessageSpy = vi
+      .spyOn(fakeBrowser.runtime, 'sendMessage')
+      .mockResolvedValue(undefined);
+
+    // 1. 侧边栏未打开时，用户划词发送（暂存）
+    const payload = makePayload({ text: 'cold start test' });
+    handleSelectionSend(payload);
+    expect(hasPending()).toBe(true);
+
+    // 2. 用户点击浮动按钮，sidePanel.open()
+    const openSpy = vi.spyOn(fakeBrowser.sidePanel, 'open').mockResolvedValue(undefined);
+    handleFloatButtonClick(1);
+    expect(openSpy).toHaveBeenCalledWith({ windowId: 1 });
+
+    // 3. sidepanel 冷启动，先 connect（panelOpen=true）
+    const port = { name: SIDEPANEL_PORT_NAME, onDisconnect: { addListener: vi.fn() } };
+    triggerConnect(port);
+    expect(isPanelOpen()).toBe(true);
+
+    // 4. sidepanel 发送 AT_PANEL_READY，触发暂存转发
+    handlePanelReady();
+
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    expect(sendMessageSpy).toHaveBeenCalledWith({ type: 'AT_SELECTION_DELIVER', payload });
+    expect(hasPending()).toBe(false);
+  });
+
+  it('sidepanel 断开后 panelOpen=false，后续发送走暂存流程', () => {
+    initPanelState(); // 注册 onConnect 监听器
+    // 1. sidepanel 连接
+    let disconnectCallback: (() => void) | null = null;
+    const port = {
+      name: SIDEPANEL_PORT_NAME,
+      onDisconnect: {
+        addListener: (fn: () => void) => {
+          disconnectCallback = fn;
+        },
+      },
+    };
+    triggerConnect(port);
+    expect(isPanelOpen()).toBe(true);
+
+    // 2. sidepanel 断开
+    expect(disconnectCallback).not.toBeNull();
+    disconnectCallback!();
+    expect(isPanelOpen()).toBe(false);
+
+    // 3. 后续发送走暂存流程
+    const payload = makePayload({ text: 'after disconnect' });
+    const response = handleSelectionSend(payload);
+    expect(response.delivered).toBe(false);
+    expect(response.showFloatButton).toBe(true);
+    expect(hasPending()).toBe(true);
+  });
+
+  it('AT_PANEL_READY 重复发送：只转发一次（暂存已清空）', () => {
+    const sendMessageSpy = vi
+      .spyOn(fakeBrowser.runtime, 'sendMessage')
+      .mockResolvedValue(undefined);
+
+    setPending(makePayload({ text: 'test' }));
+
+    // 第一次 PANEL_READY：转发并清空
+    handlePanelReady();
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+    expect(hasPending()).toBe(false);
+
+    // 第二次 PANEL_READY：无暂存，不转发
+    handlePanelReady();
+    expect(sendMessageSpy).toHaveBeenCalledTimes(1); // 仍然是 1 次
   });
 });
