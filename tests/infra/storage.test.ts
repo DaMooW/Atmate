@@ -154,6 +154,7 @@ describe('infra/storage · 写操作', () => {
         baseDirectiveEnabled: false,
         defaultContextScope: 'selection',
         locale: 'zh-CN',
+        pdfOpenMode: 'ask',
       },
     });
   });

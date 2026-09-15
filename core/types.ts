@@ -104,6 +104,8 @@ export interface Session {
 
 export type ContextScope = 'selection' | 'containing-paragraph' | 'nearby' | 'page' | 'pdf-full';
 export type Locale = 'zh-CN' | 'en-US';
+/** PDF 打开方式（M3 T3.2）：每次询问 / 始终扩展查看页 / 始终原生查看器 */
+export type PdfOpenMode = 'ask' | 'viewer' | 'native';
 
 export interface UiPrefs {
   /** 基础指令开关（FR-1.6），默认 true */
@@ -112,6 +114,8 @@ export interface UiPrefs {
   defaultContextScope: ContextScope;
   /** 界面语言（M6 起提供切换，M1 默认 zh-CN） */
   locale: Locale;
+  /** PDF 打开方式（M3 T3.2），默认 'ask' */
+  pdfOpenMode: PdfOpenMode;
 }
 
 // ── 存储元信息 ────────────────────────────────────────────

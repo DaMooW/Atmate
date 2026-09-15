@@ -56,6 +56,7 @@ function ensureV1Fields(state: MigrationInput): AppStorageState {
       baseDirectiveEnabled: state.uiPrefs?.baseDirectiveEnabled ?? true,
       defaultContextScope: state.uiPrefs?.defaultContextScope ?? 'selection',
       locale: state.uiPrefs?.locale ?? 'zh-CN',
+      pdfOpenMode: state.uiPrefs?.pdfOpenMode ?? 'ask',
     },
   };
 }

@@ -12,7 +12,7 @@
  */
 
 import type { ContextScope } from '~/core/types';
-import type { MaterialSource, ContextData } from '~/core/messages';
+import type { MaterialSource, ContextData, PdfMeta } from '~/core/messages';
 
 /** 单张素材卡片 */
 export interface MaterialCard {
@@ -24,7 +24,7 @@ export interface MaterialCard {
   title: string;
   /** 页面 URL */
   url: string;
-  /** 素材来源（浮动按钮 / 右键菜单 / 自动填充） */
+  /** 素材来源（浮动按钮 / 右键菜单 / 自动填充 / PDF 查看器） */
   source: MaterialSource;
   /** 上下文档位（默认 containing-paragraph，D20） */
   contextScope: ContextScope;
@@ -34,6 +34,8 @@ export interface MaterialCard {
   adopted: boolean;
   /** 创建时间（D22：用于去重判断） */
   createdAt: number;
+  /** PDF 元数据（M3 T3.4：仅 viewer 页划词时携带） */
+  pdfMeta?: PdfMeta;
 }
 
 /** 素材落点（D7） */

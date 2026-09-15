@@ -34,6 +34,16 @@ export interface PromptBuildInput {
   pageContent?: string;
   /** readability 提取失败标记（page 档） */
   readabilityFailed?: boolean;
+  /** 附 PDF 全文（contextScope='pdf-full' 时使用，M3 T3.6） */
+  pdfFull?: string;
+  /** PDF 全文截断标记 */
+  pdfFullTruncated?: boolean;
+  /** PDF 全文截取起始页 */
+  pdfFullStartPage?: number;
+  /** PDF 全文截取结束页 */
+  pdfFullEndPage?: number;
+  /** PDF 无文字层标记（扫描件） */
+  pdfNoTextLayer?: boolean;
   /** 页面标题（来源信息） */
   pageTitle?: string;
   /** 页面 URL（来源信息） */
@@ -75,6 +85,17 @@ export function buildMaterialPrompt(input: PromptBuildInput): string {
         contextParts.push('（注：整页正文提取可能不完整）');
       }
     }
+  } else if (input.contextScope === 'pdf-full') {
+    if (input.pdfNoTextLayer) {
+      contextParts.push('（此 PDF 无文字层，无法提取全文；建议使用「附当前页为图片」功能）');
+    } else if (input.pdfFull && input.pdfFull.trim()) {
+      contextParts.push(input.pdfFull.trim());
+      if (input.pdfFullTruncated && input.pdfFullStartPage && input.pdfFullEndPage) {
+        contextParts.push(
+          `（注：全文过长，已截取第 ${input.pdfFullStartPage}-${input.pdfFullEndPage} 页）`,
+        );
+      }
+    }
   }
   // contextScope='selection' 时不附带上下文
 
@@ -86,7 +107,9 @@ export function buildMaterialPrompt(input: PromptBuildInput): string {
           ? '相关上下文（相邻段落）'
           : input.contextScope === 'page'
             ? '相关上下文（整页正文）'
-            : '相关上下文';
+            : input.contextScope === 'pdf-full'
+              ? '相关上下文（PDF 全文）'
+              : '相关上下文';
     parts.push(`【${contextLabel}】\n${contextParts.join('\n\n')}`);
   }
 
@@ -140,6 +163,11 @@ export function buildFinalUserPrompt(userInput: string, adoptedCards: MaterialCa
       nextParagraph: card.contextData?.afterParagraph,
       pageContent: card.contextData?.fullPage,
       readabilityFailed: card.contextData?.readabilityFailed,
+      pdfFull: card.contextData?.pdfFull,
+      pdfFullTruncated: card.contextData?.pdfFullTruncated,
+      pdfFullStartPage: card.contextData?.pdfFullStartPage,
+      pdfFullEndPage: card.contextData?.pdfFullEndPage,
+      pdfNoTextLayer: card.contextData?.pdfNoTextLayer,
       pageTitle: card.title,
       pageUrl: card.url,
     });

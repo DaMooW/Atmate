@@ -26,7 +26,12 @@ describe('core/schema · migrateSchema', () => {
       activeApiConfigId: 'x',
       roles: [],
       sessions: [],
-      uiPrefs: { baseDirectiveEnabled: false, defaultContextScope: 'page', locale: 'en-US' },
+      uiPrefs: {
+        baseDirectiveEnabled: false,
+        defaultContextScope: 'page',
+        locale: 'en-US',
+        pdfOpenMode: 'ask',
+      },
     };
     const result = migrateSchema(state, 1);
     expect(result).toEqual(state);

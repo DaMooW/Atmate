@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>在伴 Atmate · PDF 查看器</title>
+    <style>
+      /* Atmate 品牌色（与 sidepanel 一致，深浅双形态） */
+      :root {
+        --bg: #f7f7f5;
+        --surface: #ffffff;
+        --surface-2: #f0efee;
+        --primary: #1f6feb;
+        --primary-hover: #1858c4;
+        --danger: #d1242f;
+        --warning: #bf8700;
+        --warning-bg: #fff8c5;
+        --success: #1a7f37;
+        --ink: #1f2328;
+        --ink-muted: #656d76;
+        --line: #e5e5e2;
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0d1117;
+          --surface: #161b22;
+          --surface-2: #21262d;
+          --primary: #4493f8;
+          --primary-hover: #3686e0;
+          --danger: #f85149;
+          --warning: #d29922;
+          --warning-bg: #2d2400;
+          --success: #3fb950;
+          --ink: #e6edf3;
+          --ink-muted: #8b949e;
+          --line: #30363d;
+          --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+          --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
+          --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.5);
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+          'Microsoft YaHei', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* 工具栏 */
+      #toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 48px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+        color: var(--ink);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        gap: 4px;
+        z-index: 100;
+        font-size: 13px;
+        box-shadow: var(--shadow-sm);
+      }
+      #toolbar button {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--ink);
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 14px;
+        min-width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
+      #toolbar button:hover {
+        background: var(--surface-2);
+        border-color: var(--line);
+      }
+      #toolbar button:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+      #toolbar button:disabled:hover {
+        background: transparent;
+        border-color: transparent;
+      }
+      #toolbar .separator {
+        width: 1px;
+        height: 20px;
+        background: var(--line);
+        margin: 0 6px;
+      }
+      #toolbar .page-info {
+        color: var(--ink-muted);
+        white-space: nowrap;
+        font-size: 13px;
+        min-width: 60px;
+        text-align: center;
+      }
+      #toolbar .spacer {
+        flex: 1;
+      }
+      #toolbar .title {
+        color: var(--ink-muted);
+        font-size: 12px;
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #toolbar .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--ink);
+        margin-right: 8px;
+      }
+      #toolbar .brand-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--primary);
+      }
+
+      /* 扫描件警告条 */
+      #scanned-warning {
+        position: fixed;
+        top: 48px;
+        left: 0;
+        right: 0;
+        background: var(--warning-bg);
+        color: var(--warning);
+        border-bottom: 1px solid var(--line);
+        padding: 8px 16px;
+        font-size: 13px;
+        display: none;
+        align-items: center;
+        gap: 8px;
+        z-index: 99;
+      }
+      #scanned-warning.visible {
+        display: flex;
+      }
+      #scanned-warning .close {
+        margin-left: auto;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: var(--warning);
+        padding: 0 4px;
+        opacity: 0.7;
+      }
+      #scanned-warning .close:hover {
+        opacity: 1;
+      }
+
+      /* PDF 容器 */
+      #viewer-container {
+        position: absolute;
+        top: 48px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: auto;
+        padding: 24px 0;
+      }
+      #viewer-container.warning-visible {
+        top: 84px;
+      }
+      .page-wrapper {
+        margin: 0 auto 24px;
+        background: var(--surface);
+        box-shadow: var(--shadow-md);
+        border-radius: 4px;
+        position: relative;
+        overflow: hidden;
+      }
+      .page-wrapper canvas {
+        display: block;
+      }
+      .textLayer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        opacity: 0.25;
+        line-height: 1;
+      }
+      .textLayer > span,
+      .textLayer > br {
+        color: transparent;
+        position: absolute;
+        white-space: pre;
+        cursor: text;
+        transform-origin: 0% 0%;
+      }
+      .textLayer ::selection {
+        background: color-mix(in srgb, var(--primary) 30%, transparent);
+      }
+
+      /* 加载/错误覆盖层 */
+      #overlay {
+        position: fixed;
+        top: 48px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        color: var(--ink-muted);
+        gap: 16px;
+        z-index: 50;
+      }
+      #overlay.hidden {
+        display: none;
+      }
+      #overlay .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--surface-2);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      #overlay .error-title {
+        font-size: 18px;
+        color: var(--ink);
+        font-weight: 600;
+      }
+      #overlay .error-desc {
+        font-size: 13px;
+        color: var(--ink-muted);
+        max-width: 420px;
+        text-align: center;
+        line-height: 1.6;
+      }
+      #overlay button {
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.15s;
+      }
+      #overlay button:hover {
+        background: var(--primary-hover);
+      }
+      #overlay .btn-secondary {
+        background: var(--surface-2);
+        color: var(--ink);
+        border: 1px solid var(--line);
+      }
+      #overlay .btn-secondary:hover {
+        background: var(--line);
+      }
+      #overlay input {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        font-size: 14px;
+        width: 240px;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      #overlay input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+      }
+      #overlay code {
+        background: var(--surface-2);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <div class="brand"><span class="brand-dot"></span>在伴</div>
+      <div class="separator"></div>
+      <button id="btn-prev" title="上一页">‹</button>
+      <span class="page-info"><span id="page-num">1</span> / <span id="page-total">1</span></span>
+      <button id="btn-next" title="下一页">›</button>
+      <div class="separator"></div>
+      <button id="btn-zoom-out" title="缩小">−</button>
+      <span id="zoom-level" class="page-info">100%</span>
+      <button id="btn-zoom-in" title="放大">+</button>
+      <button id="btn-fit-width" title="适应宽度">⤢</button>
+      <div class="separator"></div>
+      <button id="btn-download" title="下载原文件">↓</button>
+      <button id="btn-native" title="在 Chrome 原生查看器打开">↗</button>
+      <div class="spacer"></div>
+      <span class="title" id="doc-title"></span>
+    </div>
+
+    <div id="scanned-warning">
+      <span>⚠️</span>
+      <span id="scanned-text"
+        >此页可能是扫描件（无文字层），划词可能无法选中文字。M4 上线后可使用「附当前页为图片」发送给
+        AI。</span
+      >
+      <button class="close" id="scanned-close" title="关闭">×</button>
+    </div>
+
+    <div id="viewer-container"></div>
+
+    <div id="overlay">
+      <div class="spinner" id="overlay-spinner"></div>
+      <div id="overlay-text">正在加载 PDF…</div>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
