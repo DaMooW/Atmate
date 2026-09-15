@@ -30,12 +30,18 @@ export function TokenStatusBar({ used, limit, cumulative, estimated = true }: Pr
   return (
     <div className="shrink-0 border-t border-border px-4 py-2.5">
       <div className="flex items-center justify-between gap-2 text-xs">
-        <span className={colors.text} title={estimated ? '按字符数估算，±15%' : 'API 返回精确值'}>
+        <span
+          className={colors.text}
+          title={`当前对话历史占用的上下文 token / 模型上下文上限。进度条显示占用比例，接近上限时无法发送新消息。${estimated ? '当前为按字符数估算值（±15%），在 API 配置中勾选「请求用量统计」可获得精确值。' : '当前为 API 返回的精确值。'}`}
+        >
           {estimated && '≈'}
           {used.toLocaleString()} / {limit.toLocaleString()} tokens
         </span>
         {cumulative !== undefined && (
-          <span className="shrink-0 text-text-muted" title="会话累计 token">
+          <span
+            className="shrink-0 text-text-muted"
+            title="本会话从开始到现在累计消耗的 token 数（每轮对话累加，只增不减），用于统计对话总用量。"
+          >
             累计 {estimated && '≈'}
             {cumulative.toLocaleString()}
           </span>
