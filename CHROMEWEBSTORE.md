@@ -1,7 +1,7 @@
 # Chrome Web Store Listing — 在伴 Atmate
 
-> Last Updated: 2026-09-15
-> 状态：**草案**（产品尚在 M2 阶段，多数文案待功能成型后定稿）
+> Last Updated: 2026-09-16
+> 状态：**正式版**（M3 完成，准备提交审核）
 > 维护约定见 [AGENTS.md](AGENTS.md)：改动扩展（尤其权限）后同步更新本文件。
 
 ## Store Listing
@@ -18,19 +18,19 @@
 
 **Detailed Description** [REQUIRED]
 
-*（草案，待 M2 划词链路完成后定稿）*
-
-在任意网页或 PDF 上选中一段文字或一张图，点一下浮动按钮，它就会出现在侧边栏里，交给一个你定义好的 AI 角色处理——翻译、解读、摘要、追问都行。
+在任意网页或 PDF 上选中一段文字，点一下浮动按钮，它就会出现在侧边栏里，交给一个你定义好的 AI 角色处理——翻译、解读、摘要、追问都行。
 
 **用你已有的 AI 服务**：填上你自己的接口地址与密钥即可，支持各类 OpenAI 兼容服务，也可以连本地模型。密钥只存在你自己的浏览器里。
 
 **角色由你定义**：把常用的要求存成角色（比如"按前端术语翻译"、"审这篇论文的方法部分"），下次直接选用，不必每次重新交代。
 
-**每次都看得见花销**：侧边栏顶部常驻显示当前上下文占用了多少、上限还剩多少，接近上限时提前提醒，而不是悄悄截断。
+**每次都看得见花销**：侧边栏顶部常驻显示当前上下文占用了多少 token、上限还剩多少，接近上限时提前提醒，而不是悄悄截断。
+
+**PDF 原生支持**：打开 PDF 时可选择用扩展自建的查看页打开，支持划词发送、附全文上下文；扫描件（无文字层）自动检测并提醒。
 
 **用法**：选中内容 → 点击浮动按钮（或右键菜单）→ 在侧边栏补充说明 → 选择角色 → 发送。
 
-**隐私**：不做数据收集、不做行为统计，内容只发往你自己配置的接口。
+**隐私**：不做数据收集、不做行为统计，内容只发往你自己配置的接口。代码完全开源。
 
 **Category** [REQUIRED]
 
@@ -102,33 +102,34 @@ Chinese (Simplified)
 
 **Privacy Policy URL** [REQUIRED]
 
-待定稿（上架前需托管在可公开访问的地址；可参考 `chrome-extensions` 技能 `references/webstore/privacy-policy.md`）
+https://raw.githubusercontent.com/DaMooW/Atmate/main/PRIVACY.md
 
 ## Distribution
 
-**Visibility**: 待定（个人使用考虑 Unlisted；若开源发布则 Public）
+**Visibility**: Public（公开，开源项目）
 **Regions**: All regions
 
 ## Developer Info
 
-**Publisher Name** [REQUIRED] 待填
+**Publisher Name** [REQUIRED] DaMooW
 
-**Contact Email** [REQUIRED] 待填
+**Contact Email** [REQUIRED] （上架时填写你的邮箱）
 
-**Support URL / Email** [RECOMMENDED] 待填
+**Support URL / Email** [RECOMMENDED] https://github.com/DaMooW/Atmate/issues
 
 ## Version History
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
 | 0.1.0 | 2026-09-13 | M0 工程骨架：侧边栏空壳、工具栏图标打开侧边栏（无业务功能，未提审） | Draft |
+| 0.1.0 | 2026-09-16 | M1-M3：划词发送 + 流式应答 + token 可见 + PDF 支持（自建 viewer、附全文、扫描件检测） | Ready for Review |
 
 ## Review Notes
 
 ### Known Issues / Limitations
 
-- 0.1.0 不含任何业务功能，仅为骨架版本，**不打算提交审核**。
-- 扩展无内置模型：所有 AI 能力依赖用户自配的接口；上架文案与隐私政策须随功能落地同步更新。
+- PDF viewer 内划词文本存在轻微偏移（向前多取几个字符），根因是 pdf.js TextLayer 绝对定位 span 与浏览器选区的交互问题。详见 [Issue #9](https://github.com/DaMooW/Atmate/issues/9)。不影响核心功能，后续版本修复。
+- 扩展无内置模型：所有 AI 能力依赖用户自配的接口。
 
 ### Rejection History
 
