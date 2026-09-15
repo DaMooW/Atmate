@@ -18,7 +18,7 @@ export default defineConfig({
     short_name: 'Atmate',
     description: 'Chrome 侧边栏 AI 角色助手：划词发送，流式应答，token 用量与上下文一目了然。',
     minimum_chrome_version: '114',
-    permissions: ['sidePanel', 'storage'],
+    permissions: ['sidePanel', 'storage', 'contextMenus'],
     // 图标（spec 修订 D9）：由 `node scripts/generate-icons.mjs` 生成的真实 PNG。
     // public/ 下的文件会被原样拷贝到产物根目录，故路径写作 icon/N.png。
     icons: {

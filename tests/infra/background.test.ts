@@ -21,6 +21,16 @@ beforeEach(() => {
     addListener: vi.fn(),
     removeListener: vi.fn(),
   };
+  // fake-browser 未实现 contextMenus，手动 mock（M2 initContextMenus 需要）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (fakeBrowser.contextMenus as any) = {
+    removeAll: (callback: () => void) => callback(),
+    create: vi.fn(),
+    onClicked: {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    },
+  };
   vi.stubGlobal('browser', fakeBrowser);
   vi.stubGlobal('defineBackground', (fn: () => void) => fn());
   vi.restoreAllMocks();

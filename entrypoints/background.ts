@@ -1,10 +1,14 @@
 import { initPanelState } from './background/panel-state';
+import { initContextMenus } from './background/context-menus';
 import { handleMessage } from './background/messaging-router';
 import type { ExtensionMessage, SelectionSendResponse } from '~/core/messages';
 
 export default defineBackground(() => {
   // M2 T2.5：初始化 sidepanel 打开状态监听（long-lived port）
   initPanelState();
+
+  // M2 T2.3：初始化右键菜单
+  initContextMenus();
 
   // M2 T2.5：消息路由监听（分流逻辑）
   browser.runtime.onMessage.addListener(
