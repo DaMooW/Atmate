@@ -1,23 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStorageStore } from '../../infra/storage/store';
 import { generateId } from '../../core/id';
 import type { Session, Role } from '../../core/types';
 
 /**
- * 会话列表面板（spec M1 T1.7）。
+ * 会话列表面板（spec M1 T1.7 / UI 改版 T-UI.1）。
+ * 抽屉覆盖层模式：从导航栏右侧滑出，覆盖主内容区，不挤压布局。
  * 展示所有会话，支持切换/新建/重命名/删除，按 updatedAt 降序。
  */
 interface Props {
+  /** 抽屉是否打开 */
+  isOpen: boolean;
   currentSessionId: string | null;
   onSelect: (sessionId: string) => void;
   onClose?: () => void;
 }
 
-export function SessionList({ currentSessionId, onSelect, onClose }: Props) {
+export function SessionList({ isOpen, currentSessionId, onSelect, onClose }: Props) {
   const { sessions, setSessions, roles } = useStorageStore();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [showNewSession, setShowNewSession] = useState(false);
+
+  // Escape 键关闭抽屉
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // 按 updatedAt 降序
   const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
@@ -74,13 +87,17 @@ export function SessionList({ currentSessionId, onSelect, onClose }: Props) {
   };
 
   return (
-    <div className="flex h-full w-60 flex-col border-r border-border bg-surface">
-      <div className="flex items-center justify-between border-b border-border p-3">
+    <div
+      className={`absolute top-0 bottom-0 left-16 z-40 flex w-64 flex-col border-r border-border bg-surface shadow-lg transition-transform duration-200 ease-out ${
+        isOpen ? 'translate-x-0' : 'pointer-events-none translate-x-[-100%]'
+      }`}
+    >
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">会话</h2>
         <div className="flex gap-1">
           <button
             onClick={() => setShowNewSession(!showNewSession)}
-            className="rounded p-1 text-text-muted hover:bg-surface-2 hover:text-text"
+            className="rounded-md p-1.5 text-text-muted hover:bg-surface-2 hover:text-text"
             title="新建会话"
           >
             <svg
@@ -97,7 +114,7 @@ export function SessionList({ currentSessionId, onSelect, onClose }: Props) {
           {onClose && (
             <button
               onClick={onClose}
-              className="rounded p-1 text-text-muted hover:bg-surface-2 hover:text-text"
+              className="rounded-md p-1.5 text-text-muted hover:bg-surface-2 hover:text-text"
               title="关闭"
             >
               <svg
@@ -123,7 +140,7 @@ export function SessionList({ currentSessionId, onSelect, onClose }: Props) {
               <button
                 key={role.id}
                 onClick={() => handleNewSession(role)}
-                className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-surface-2"
+                className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-2"
               >
                 {role.name}
               </button>

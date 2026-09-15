@@ -13,13 +13,13 @@ export function PrefsPanel() {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-4 p-4">
       <div>
         <h2 className="text-base font-semibold">偏好设置</h2>
       </div>
 
       {/* 基础指令 */}
-      <div className="rounded-lg border border-border p-4">
+      <div className="rounded-xl border border-border p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h3 className="text-sm font-medium">全局基础指令</h3>
@@ -55,7 +55,7 @@ export function PrefsPanel() {
       </div>
 
       {/* 预留：其他偏好设置（M2+） */}
-      <div className="rounded-lg border border-dashed border-border p-4">
+      <div className="rounded-xl border border-dashed border-border p-4">
         <p className="text-xs text-text-muted">
           更多偏好设置（界面语言、默认上下文范围等）将在后续版本中提供。
         </p>

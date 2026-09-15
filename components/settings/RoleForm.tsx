@@ -83,16 +83,16 @@ export function RoleForm({ initial, onSave, onCancel }: Props) {
         {error && <p className="text-sm text-danger">{error}</p>}
       </div>
 
-      <div className="flex shrink-0 gap-2 border-t border-border p-3">
+      <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-4 py-3">
         <button
           onClick={onCancel}
-          className="flex-1 rounded border border-border py-2 text-sm text-text-muted hover:bg-surface-2"
+          className="flex-1 rounded-lg border border-border py-2 text-sm text-text-muted hover:bg-surface-2"
         >
           取消
         </button>
         <button
           onClick={handleSave}
-          className="flex-1 rounded bg-primary py-2 text-sm font-medium text-white hover:bg-primary/90"
+          className="flex-1 rounded-lg bg-primary py-2 text-sm font-medium text-white hover:bg-primary/90"
         >
           保存
         </button>

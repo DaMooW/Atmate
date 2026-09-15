@@ -76,58 +76,60 @@ export function ApiConfigList() {
         <h2 className="text-base font-semibold">API 配置</h2>
         <button
           onClick={handleCreate}
-          className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90"
+          className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90"
         >
           新建配置
         </button>
       </div>
 
       {apiConfigs.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-8 text-center">
+        <div className="rounded-xl border border-dashed border-border p-8 text-center">
           <p className="text-sm text-text-muted">暂无 API 配置</p>
           <p className="mt-1 text-xs text-text-muted">点击"新建配置"添加你的第一个 API 端点</p>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {apiConfigs.map((config) => (
             <li
               key={config.id}
-              className={`rounded-lg border p-3 ${
-                activeApiConfigId === config.id ? 'border-primary bg-primary/5' : 'border-border'
+              className={`rounded-xl border p-3 transition-shadow hover:shadow-sm ${
+                activeApiConfigId === config.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border bg-surface'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{config.name}</span>
+                    <span className="truncate text-sm font-medium">{config.name}</span>
                     {activeApiConfigId === config.id && (
-                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                      <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
                         当前使用
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 text-xs text-text-muted">
+                  <div className="mt-1 truncate text-xs text-text-muted">
                     {config.modelId} · {config.baseUrl}
                   </div>
                 </div>
-                <div className="flex shrink-0 gap-1">
+                <div className="flex shrink-0 gap-0.5">
                   {activeApiConfigId !== config.id && (
                     <button
                       onClick={() => handleActivate(config.id)}
-                      className="rounded px-2 py-1 text-xs text-text-muted hover:bg-surface-2 hover:text-text"
+                      className="rounded-md px-2 py-1 text-xs text-text-muted hover:bg-surface-2 hover:text-text"
                     >
                       启用
                     </button>
                   )}
                   <button
                     onClick={() => handleEdit(config.id)}
-                    className="rounded px-2 py-1 text-xs text-text-muted hover:bg-surface-2 hover:text-text"
+                    className="rounded-md px-2 py-1 text-xs text-text-muted hover:bg-surface-2 hover:text-text"
                   >
                     编辑
                   </button>
                   <button
                     onClick={() => handleDelete(config.id)}
-                    className="rounded px-2 py-1 text-xs text-danger hover:bg-danger/10"
+                    className="rounded-md px-2 py-1 text-xs text-danger hover:bg-danger/10"
                   >
                     删除
                   </button>

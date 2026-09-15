@@ -8,10 +8,10 @@
  */
 
 :root {
-  /* 浅色（默认） */
-  --bg: #f6f6f4;
+  /* 浅色（默认）——现代简洁风：主内容区暖灰，导航栏/卡片纯白，微差异分层 */
+  --bg: #f7f7f5;
   --surface: #ffffff;
-  --surface-2: #ecebeb;
+  --surface-2: #f0efee;
   --primary: #1f6feb;
   --primary-hover: #1858c4;
   --danger: #d1242f;
@@ -19,15 +19,15 @@
   --success: #1a7f37;
   --ink: #1f2328;
   --ink-muted: #656d76;
-  --line: #d1d9e0;
+  --line: #e5e5e2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* 深色 */
-    --bg: #101418;
-    --surface: #15191e;
-    --surface-2: #1d232a;
+    /* 深色——GitHub Dark 基调：主内容区深灰，导航栏/卡片略浅，微差异分层 */
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #21262d;
     --primary: #4493f8;
     --primary-hover: #3686e0;
     --danger: #f85149;
@@ -35,7 +35,7 @@
     --success: #3fb950;
     --ink: #e6edf3;
     --ink-muted: #8b949e;
-    --line: #3d444d;
+    --line: #30363d;
   }
 }
 
@@ -53,9 +53,24 @@
   --color-border: var(--line);
 }
 
+/* 全局基础样式 */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 @layer components {
   .input {
-    @apply w-full rounded border border-border bg-surface px-3 py-2 text-sm text-text transition-colors outline-none focus:border-primary;
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text transition-colors outline-none focus:border-primary focus:ring-1 focus:ring-primary/20;
   }
 }
 
