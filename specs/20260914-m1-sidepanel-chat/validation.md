@@ -107,14 +107,14 @@
 
 ## 3. 合并清单（Definition of Merged）
 
-- [ ] plan.md 任务组 1–10 全部勾选
-- [ ] roadmap.md T1.1–T1.10 已回勾，§10 追加 M1 变更记录
-- [ ] requirements.md 无悬而未决的范围变更
-- [ ] 三条门禁（typecheck / lint / test）全绿，`passWithNoTests` 已关闭
-- [ ] 人工验收清单 §2.1–§2.8 主路径全部通过（DeepSeek 联调）
-- [ ] manifest permissions 确认：`["sidePanel", "storage"]`，无意外新增
-- [ ] `CHROMEWEBSTORE.md` 已同步 storage 权限理由
-- [ ] 合并方式：分支合回 `main` 后删除分支；分支名与目录名一致（`20260914-m1-sidepanel-chat`）
+- [x] plan.md 任务组 1–10 全部勾选（5.10 / 6.7 的 L3 组件测试按 plan 原定留待 M1 后引入 `@testing-library/react` 时补，plan 中已标注）
+- [x] roadmap.md T1.1–T1.10 已回勾，§10 追加 M1 变更记录（含 2026-09-14 回声修复、09-15 验收修订两行）
+- [x] requirements.md 无悬而未决的范围变更
+- [x] 三条门禁（typecheck / lint / test）全绿，`passWithNoTests` 已关闭（273 用例）
+- [x] 人工验收清单 §2.1–§2.8 主路径全部通过（DeepSeek 联调；§2.4 中"关闭浏览器重开"一项由用户 2026-09-15 决定暂缓）
+- [x] manifest permissions 确认：`["sidePanel", "storage"]`，无意外新增
+- [x] `CHROMEWEBSTORE.md` 已同步 storage 权限理由
+- [x] 合并方式：分支合回 `main`（GitHub PR，`20260914-m1-fix-storage-echo` 先快进并入本分支）；分支保留不删除（与既有 PR 惯例一致）
 
 ## 4. 复现步骤（验收人按此走查）
 
