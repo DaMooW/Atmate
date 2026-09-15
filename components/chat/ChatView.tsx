@@ -22,9 +22,11 @@ import type { StreamChatHandle } from '../../infra/llm/client';
 interface Props {
   currentSessionId: string | null;
   onSessionChange: (sessionId: string) => void;
+  /** 导航到设置视图的回调（空状态引导用） */
+  onNavigateToSettings?: () => void;
 }
 
-export function ChatView({ currentSessionId, onSessionChange }: Props) {
+export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettings }: Props) {
   const { apiConfigs, activeApiConfigId, roles, sessions, setSessions, uiPrefs } =
     useStorageStore();
 
@@ -218,6 +220,8 @@ export function ChatView({ currentSessionId, onSessionChange }: Props) {
         streamingMessageId={streamingMessageId}
         error={error}
         onRetry={handleRetry}
+        showSetupGuide={apiConfigs.length === 0}
+        onNavigateToSettings={onNavigateToSettings}
       />
       <TokenStatusBar
         used={contextUsed}

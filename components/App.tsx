@@ -16,26 +16,42 @@ export function App() {
   const [sessionListOpen, setSessionListOpen] = useState(false);
 
   return (
-    <div className="flex h-full">
+    <div className="relative flex h-full bg-bg text-text">
       <Sidebar
         currentView={view}
         onNavigate={setView}
         sessionListOpen={sessionListOpen}
         onToggleSessionList={() => setSessionListOpen(!sessionListOpen)}
       />
+      <main className="min-w-0 flex-1">
+        {view === 'chat' && (
+          <ChatView
+            currentSessionId={currentSessionId}
+            onSessionChange={setCurrentSessionId}
+            onNavigateToSettings={() => setView('settings')}
+          />
+        )}
+        {view === 'settings' && <SettingsView />}
+      </main>
+
+      {/* 遮罩层：抽屉打开时覆盖主内容区，点击关闭 */}
       {view === 'chat' && sessionListOpen && (
+        <div
+          className="absolute inset-0 z-30 bg-black/30"
+          onClick={() => setSessionListOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* 会话列表抽屉：从导航栏右侧滑出，覆盖主内容区 */}
+      {view === 'chat' && (
         <SessionList
+          isOpen={sessionListOpen}
           currentSessionId={currentSessionId}
           onSelect={setCurrentSessionId}
           onClose={() => setSessionListOpen(false)}
         />
       )}
-      <main className="min-w-0 flex-1">
-        {view === 'chat' && (
-          <ChatView currentSessionId={currentSessionId} onSessionChange={setCurrentSessionId} />
-        )}
-        {view === 'settings' && <SettingsView />}
-      </main>
     </div>
   );
 }

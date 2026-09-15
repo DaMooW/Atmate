@@ -13,7 +13,7 @@ interface Props {
 
 export function Sidebar({ currentView, onNavigate, sessionListOpen, onToggleSessionList }: Props) {
   return (
-    <aside className="flex w-16 shrink-0 flex-col items-center gap-2 border-r border-border bg-surface py-3">
+    <aside className="relative z-50 flex w-16 shrink-0 flex-col items-center gap-2 border-r border-border bg-surface py-3">
       <NavButton active={sessionListOpen} onClick={onToggleSessionList} title="会话列表">
         <svg
           width="20"

@@ -20,19 +20,21 @@ export function MessageItem({ message, streaming }: Props) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-lg px-3 py-2 ${
-          isUser ? 'bg-primary text-white' : 'bg-surface-2 text-text'
+        className={`max-w-[88%] rounded-2xl px-4 py-2.5 ${
+          isUser
+            ? 'rounded-br-md bg-primary text-white shadow-sm'
+            : 'rounded-bl-md border border-border bg-surface text-text shadow-sm'
         }`}
       >
         {isUser ? (
-          <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</div>
         ) : (
-          <div className="markdown-body text-sm">
+          <div className="markdown-body text-sm leading-relaxed">
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
               {message.content}
             </ReactMarkdown>
             {streaming && (
-              <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-text-muted" />
+              <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-text-muted" />
             )}
           </div>
         )}

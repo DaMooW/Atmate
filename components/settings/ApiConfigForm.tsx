@@ -149,7 +149,7 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
             <button
               type="button"
               onClick={() => setShowKey((v) => !v)}
-              className="rounded border border-border px-2 text-xs text-text-muted hover:bg-surface-2"
+              className="rounded-md border border-border px-2 text-xs text-text-muted hover:bg-surface-2"
             >
               {showKey ? '隐藏' : '显示'}
             </button>
@@ -183,7 +183,7 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
         </Field>
 
         {/* 思维强度 */}
-        <div className="rounded-lg border border-border p-3">
+        <div className="rounded-xl border border-border p-3">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm font-medium">思维强度</span>
             <label className="flex items-center gap-2 text-xs">
@@ -212,12 +212,18 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
                   }
                   className="input"
                 >
-                  <option value="reasoning_effort">
-                    reasoning_effort（DeepSeek / OpenAI o 系列）
-                  </option>
-                  <option value="budget_tokens">budget_tokens（thinking.budget_tokens）</option>
-                  <option value="custom">自定义 JSON 模板</option>
+                  <option value="reasoning_effort">reasoning_effort</option>
+                  <option value="budget_tokens">budget_tokens</option>
+                  <option value="custom">自定义 JSON</option>
                 </select>
+                <p className="mt-1 text-xs text-text-muted">
+                  {form.thinking.config.mapping === 'reasoning_effort' &&
+                    '适用于 DeepSeek / OpenAI o 系列等支持 reasoning_effort 字段的模型'}
+                  {form.thinking.config.mapping === 'budget_tokens' &&
+                    '适用于支持 thinking.budget_tokens 字段的模型'}
+                  {form.thinking.config.mapping === 'custom' &&
+                    '使用自定义 JSON 模板，通过 {{level}} 占位符插入档位值'}
+                </p>
               </div>
 
               {/* 档位选择 */}
@@ -229,7 +235,7 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
                       key={lv}
                       type="button"
                       onClick={() => handleThinkingLevelChange(lv)}
-                      className={`flex-1 rounded border px-2 py-1 text-xs ${
+                      className={`flex-1 rounded-md border px-2 py-1.5 text-xs ${
                         form.thinking.level === lv
                           ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border text-text-muted hover:bg-surface-2'
@@ -316,7 +322,7 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
         </div>
 
         {/* collectUsage */}
-        <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div className="flex items-center justify-between rounded-xl border border-border p-3">
           <div>
             <span className="text-sm font-medium">请求用量统计</span>
             <p className="text-xs text-text-muted">
@@ -331,13 +337,13 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
         </div>
 
         {/* 连接测试 */}
-        <div className="rounded-lg border border-border p-3">
+        <div className="rounded-xl border border-border p-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">连接测试</span>
             <button
               onClick={handleTestConnection}
               disabled={testing}
-              className="bg-surface-hover rounded px-3 py-1 text-xs font-medium hover:bg-border disabled:opacity-50"
+              className="rounded-md border border-border bg-surface px-3 py-1 text-xs font-medium text-text-muted hover:bg-surface-2 hover:text-text disabled:opacity-50"
             >
               {testing ? '测试中...' : '测试连接'}
             </button>
@@ -352,16 +358,16 @@ export function ApiConfigForm({ initial, onSave, onCancel, existingNames }: Prop
       </div>
 
       {/* 底部操作栏 */}
-      <div className="flex shrink-0 gap-2 border-t border-border p-3">
+      <div className="flex shrink-0 gap-2 border-t border-border bg-surface px-4 py-3">
         <button
           onClick={onCancel}
-          className="flex-1 rounded border border-border py-2 text-sm text-text-muted hover:bg-surface-2"
+          className="flex-1 rounded-lg border border-border py-2 text-sm text-text-muted hover:bg-surface-2"
         >
           取消
         </button>
         <button
           onClick={handleSave}
-          className="flex-1 rounded bg-primary py-2 text-sm font-medium text-white hover:bg-primary/90"
+          className="flex-1 rounded-lg bg-primary py-2 text-sm font-medium text-white hover:bg-primary/90"
         >
           保存
         </button>

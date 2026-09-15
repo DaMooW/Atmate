@@ -43,7 +43,7 @@ export function Composer({ onSend, onStop, streaming, disabled, disabledReason }
   };
 
   return (
-    <div className="shrink-0 border-t border-border p-3">
+    <div className="shrink-0 border-t border-border bg-surface px-4 py-3">
       {disabled && disabledReason && (
         <p className="mb-2 text-xs text-text-muted">{disabledReason}</p>
       )}
@@ -53,9 +53,7 @@ export function Composer({ onSend, onStop, streaming, disabled, disabledReason }
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={
-            disabled ? '请先配置 API 并选择角色' : '输入消息...（Enter 发送，Shift+Enter 换行）'
-          }
+          placeholder={disabled ? '输入消息...' : '输入消息...（Enter 发送，Shift+Enter 换行）'}
           disabled={disabled || streaming}
           rows={1}
           className="input min-h-[40px] flex-1 resize-none"
@@ -63,7 +61,7 @@ export function Composer({ onSend, onStop, streaming, disabled, disabledReason }
         {streaming ? (
           <button
             onClick={onStop}
-            className="shrink-0 rounded bg-danger px-4 py-2 text-sm font-medium text-white hover:bg-danger/90"
+            className="shrink-0 rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:bg-danger/90"
           >
             停止
           </button>
@@ -71,7 +69,7 @@ export function Composer({ onSend, onStop, streaming, disabled, disabledReason }
           <button
             onClick={handleSend}
             disabled={disabled || !text.trim()}
-            className="shrink-0 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             发送
           </button>

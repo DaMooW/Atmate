@@ -28,26 +28,26 @@ export function TokenStatusBar({ used, limit, cumulative, estimated = true }: Pr
   const reached = used >= limit;
 
   return (
-    <div className="shrink-0 border-t border-border px-3 py-2">
-      <div className="flex items-center justify-between text-xs">
+    <div className="shrink-0 border-t border-border px-4 py-2.5">
+      <div className="flex items-center justify-between gap-2 text-xs">
         <span className={colors.text} title={estimated ? '按字符数估算，±15%' : 'API 返回精确值'}>
           {estimated && '≈'}
           {used.toLocaleString()} / {limit.toLocaleString()} tokens
         </span>
         {cumulative !== undefined && (
-          <span className="text-text-muted" title="会话累计 token">
+          <span className="shrink-0 text-text-muted" title="会话累计 token">
             累计 {estimated && '≈'}
             {cumulative.toLocaleString()}
           </span>
         )}
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-2">
         <div
-          className={`h-full rounded-full transition-all ${colors.bar}`}
-          style={{ width: `${percent}%` }}
+          className={`h-full rounded-full transition-all duration-300 ${colors.bar}`}
+          style={{ width: `${Math.max(percent, used > 0 ? 1 : 0)}%` }}
         />
       </div>
-      {reached && <p className="mt-1 text-xs text-danger">上下文已满，无法发送更多消息</p>}
+      {reached && <p className="mt-1.5 text-xs text-danger">上下文已满，无法发送更多消息</p>}
     </div>
   );
 }
