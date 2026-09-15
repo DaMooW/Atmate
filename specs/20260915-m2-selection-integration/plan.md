@@ -18,20 +18,22 @@
 
 **完成判据**：在普通网页划词后 200ms 触发回调；在输入框内划词不触发；三门禁全绿。
 
-## 2. 浮动按钮：Shadow DOM + 定位 + 点击发送（对应 T2.2）
+## 2. 浮动按钮：Shadow DOM + 定位 + 点击发送（对应 T2.2, D16）
 
-**目标**：浮动按钮在选区右下角显示，Shadow DOM 隔离站点样式，防溢出，点击后打开侧边栏并发送选区消息。
+**目标**：浮动按钮仅在侧边栏未打开时显示（D16 分流），选区右下角定位，Shadow DOM 隔离站点样式，防溢出，点击后通知 background 打开侧边栏并转发暂存的选区。
 
 - [ ] 2.1 `entrypoints/content/float-button/style.ts`：内联 CSS 字符串（按钮 32×32 圆形、深色半透明背景、hover 变亮、tooltip、z-index 最大值）；不引用外部样式表
 - [ ] 2.2 `entrypoints/content/float-button/index.ts`：`createFloatButton()` → 创建 `div` → `attachShadow({ mode: 'open' })` → 注入 `<style>` + 按钮元素 → 挂载到 `document.body`；`show(x, y)` / `hide()` / `destroy()` 方法
 - [ ] 2.3 `entrypoints/content/float-button/position.ts`：定位纯函数 `calcButtonPosition(rect: DOMRect, viewport: { width: number; height: number }, buttonSize: number): { x: number; y: number }`——选区右下角 +8px 偏移；右溢出则左移，下溢出则上移到选区上方
 - [ ] 2.4 图标：内联 SVG（Atmate 图标，复用 M0 图标的 path 或简化版）；不使用外部图片
-- [ ] 2.5 点击事件：按钮 `click` → 隐藏按钮 → 读取当前选区 `window.getSelection().toString()` → 构造消息 `{ type: 'AT_SELECTION_SEND', payload: { text, title: document.title, url: location.href, source: 'float-button' } }` → `chrome.runtime.sendMessage`
-- [ ] 2.6 Shadow DOM 降级：若 `attachShadow` 抛错（极罕见 CSP），降级为直接创建 div + 内联 style 属性，不崩溃
-- [ ] 2.7 **L1 单测**：`position.test.ts`（6 例：正常右下角/右溢出左移/下溢出上移/同时溢出/选区在视口左上角/选区在视口右下角）
-- [ ] 2.8 **L2 单测**：浮动按钮创建与点击（5 例：Shadow DOM 创建成功/show 定位正确/hide 隐藏/点击发送消息含正确 payload/attachShadow 失败降级）
+- [ ] 2.5 **分流逻辑**（D16）：`entrypoints/content/messaging/send.ts`——选区有效后 `chrome.runtime.sendMessage({ type: 'AT_SELECTION_SEND', payload })` → 等待 background 回复：`{ delivered: true }` → 不显示浮动按钮；`{ delivered: false, showFloatButton: true }` → 显示浮动按钮
+- [ ] 2.6 点击事件：按钮 `click` → 隐藏按钮 → `chrome.runtime.sendMessage({ type: 'AT_FLOAT_BUTTON_CLICK' })` → background 打开侧边栏并转发暂存的 payload（无需重新发送选区数据）
+- [ ] 2.7 Shadow DOM 降级：若 `attachShadow` 抛错（极罕见 CSP），降级为直接创建 div + 内联 style 属性，不崩溃
+- [ ] 2.8 **L1 单测**：`position.test.ts`（6 例：正常右下角/右溢出左移/下溢出上移/同时溢出/选区在视口左上角/选区在视口右下角）
+- [ ] 2.9 **L2 单测**：浮动按钮创建与点击（5 例：Shadow DOM 创建成功/show 定位正确/hide 隐藏/点击发送 AT_FLOAT_BUTTON_CLICK/attachShadow 失败降级）
+- [ ] 2.10 **L2 单测**：分流响应处理（3 例：delivered=true 不显示按钮/showFloatButton=true 显示按钮/响应超时降级为显示按钮）
 
-**完成判据**：在普通网页划词后右下角出现图标按钮；hover 显示 tooltip；点击后侧边栏打开（需配合 T2.5 消息链路）；按钮不受站点样式影响；三门禁全绿。
+**完成判据**：侧边栏未打开时，划词后右下角出现图标按钮；hover 显示 tooltip；点击后侧边栏打开并填入素材；侧边栏已打开时，划词不显示浮动按钮（素材直接填入侧边栏，需配合任务组 5）；按钮不受站点样式影响；三门禁全绿。
 
 ## 3. 右键菜单（对应 T2.3）
 
@@ -53,7 +55,7 @@
 - [ ] 4.2 `components/chat/MaterialCardList.tsx`：卡片列表容器（Composer 上方），支持多卡片积累，按 createdAt 排序，从下往上滑入动画
 - [ ] 4.3 `core/material/types.ts`：`MaterialCard` 接口定义（见 requirements §4.1）
 - [ ] 4.4 `core/material/promptBuilder.ts`：prompt 组装纯函数 `buildMaterialPrompt(card: MaterialCard): string`——按 requirements §4.5 格式组装【用户选中的内容】【附带的上下文·前/后段落】【用户补充说明】；空区块省略；selection 档/nearby 档/page 档分别处理
-- [ ] 4.5 `ChatView.tsx` 集成：监听 `chrome.runtime.onMessage`，收到 `AT_SELECTION_SEND` → 创建 `MaterialCard`（contextScope 默认取 `uiPrefs.defaultContextScope`，即 `'nearby'`）→ 加入卡片列表
+- [ ] 4.5 `ChatView.tsx` 集成：监听 `chrome.runtime.onMessage`，收到 `AT_SELECTION_DELIVER`（background 分流后的最终投递，D16）→ 创建 `MaterialCard`（contextScope 默认取 `uiPrefs.defaultContextScope`，即 `'nearby'`）→ 加入卡片列表
 - [ ] 4.6 采用行为：点击"采用"→ `buildMaterialPrompt(card)` → 追加到 Composer 输入框末尾（空行分隔）→ 从卡片列表移除；若 Composer 为空则直接设置值
 - [ ] 4.7 丢弃行为：点击"丢弃"→ 从卡片列表移除，不填入 Composer
 - [ ] 4.8 落点逻辑（D7）：卡片顶部常显"将发送至：<当前会话名>"；"转新会话"按钮切换为"将发送至：新会话"；采用时若为新会话则先创建新会话（默认角色「在伴 Atmate」）再填入；无激活会话时直接显示"新会话"
@@ -65,21 +67,26 @@
 
 **完成判据**：划词发送后侧边栏出现素材卡片；编辑原文/补充说明后采用，Composer 中内容正确；切换上下文档位后预览和 token 更新；转新会话后采用创建新会话；丢弃后卡片消失；三门禁全绿。
 
-## 5. 消息链路容错（对应 T2.5）
+## 5. 消息链路容错与分流（对应 T2.5, D16）
 
-**目标**：冷启动竞态（面板未开时点击）、同 Tab 重复发送、超长选区三种容错场景处理正确。
+**目标**：background 维护侧边栏打开状态（port 连接检测），划词消息根据状态分流（已打开→直接投递 / 未打开→显示浮动按钮）；冷启动竞态、同 Tab 重复发送、超长选区三种容错场景处理正确。
 
-- [ ] 5.1 `entrypoints/background/pending-material.ts`：`pendingMaterial: SelectionSendPayload | null` 内存变量；`setPending(payload)` / `getPendingAndClear()` / `hasPending()`
-- [ ] 5.2 `entrypoints/background/messaging-router.ts`：消息路由函数 `routeSelectionMessage(payload)`——① `sidePanel.open({ windowId })`；② 检查 sidepanel 是否已就绪（通过 `chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'] })` 或简单的 `panelReady` 标志）；③ 未就绪则 `setPending(payload)`；④ 已就绪则 `chrome.runtime.sendMessage({ type: 'AT_SELECTION_DELIVER', payload })`
-- [ ] 5.3 sidepanel 初始化完成后发送 `AT_PANEL_READY`：background 收到后若 `hasPending()` 则转发 `AT_SELECTION_DELIVER` + 清空
-- [ ] 5.4 sidepanel 监听 `AT_SELECTION_DELIVER`（而非直接监听 `AT_SELECTION_SEND`）：与 T2.4 的 4.5 集成
-- [ ] 5.5 同 Tab 重复发送：新素材创建新卡片追加到列表（D3 多卡片积累），不替换旧卡片；卡片携带来源 URL 可区分
-- [ ] 5.6 超长选区：不截断（D6）；token 估算超 contextLimit 时，卡片 token 预览显示红色 + 采用后 TokenStatusBar 红条禁发；卡片上不显示截断提示
-- [ ] 5.7 background `onMessage` 监听整合：`AT_SELECTION_SEND`（来自 content）→ `routeSelectionMessage`；`AT_PANEL_READY`（来自 sidepanel）→ 转发暂存
-- [ ] 5.8 **L2 单测**：冷启动竞态（6 例：面板未就绪时暂存/面板就绪后直接转发/AT_PANEL_READY 后转发暂存并清空/连续两次发送只保留最新暂存/暂存后面板就绪转发 payload 正确/panelReady 标志管理）
-- [ ] 5.9 **L2 单测**：消息路由（3 例：AT_SELECTION_SEND 触发 sidePanel.open/AT_PANEL_READY 触发转发/未知消息类型忽略）
+- [ ] 5.1 `entrypoints/background/panel-state.ts`：`panelOpen: boolean` 状态维护；`chrome.runtime.onConnect` 监听 `port.name === 'at-sidepanel'` → `panelOpen = true`；`port.onDisconnect` → `panelOpen = false`；导出 `isPanelOpen()`
+- [ ] 5.2 sidepanel 入口 `entrypoints/sidepanel.ts` `main()` 中新增：`chrome.runtime.connect({ name: 'at-sidepanel' })`（建立 long-lived port，D16 状态检测）；初始化完成后 `chrome.runtime.sendMessage({ type: 'AT_PANEL_READY' })`（冷启动就绪通知）
+- [ ] 5.3 `entrypoints/background/pending-material.ts`：`pendingMaterial: SelectionSendPayload | null` 内存变量；`setPending(payload)` / `getPendingAndClear()` / `hasPending()`；连续划词覆盖旧暂存
+- [ ] 5.4 `entrypoints/background/messaging-router.ts`：消息分流函数 `routeSelectionMessage(payload, sendResponse)`（D16 核心）：
+  - 若 `isPanelOpen() === true` → `chrome.runtime.sendMessage({ type: 'AT_SELECTION_DELIVER', payload })` → `sendResponse({ delivered: true })`
+  - 若 `isPanelOpen() === false` → `setPending(payload)` → `sendResponse({ delivered: false, showFloatButton: true })`
+- [ ] 5.5 `AT_FLOAT_BUTTON_CLICK` 处理：收到浮动按钮点击消息 → `chrome.sidePanel.open({ windowId })`（打开当前窗口侧边栏）→ 暂存的 payload 已在 pending-material 中 → 等 `AT_PANEL_READY` 后转发
+- [ ] 5.6 `AT_PANEL_READY` 处理：收到 sidepanel 就绪通知 → 若 `hasPending()` → `chrome.runtime.sendMessage({ type: 'AT_SELECTION_DELIVER', payload: getPendingAndClear() })`；若无暂存 → 忽略
+- [ ] 5.7 background `onMessage` 监听整合：`AT_SELECTION_SEND`（来自 content / 右键菜单）→ `routeSelectionMessage`（注意：`sendResponse` 需返回 `true` 保持异步通道开放）；`AT_FLOAT_BUTTON_CLICK` → 打开侧边栏；`AT_PANEL_READY` → 转发暂存
+- [ ] 5.8 同 Tab 重复发送：侧边栏已打开时，每次划词直接创建新卡片（多卡片积累，D3）；侧边栏未打开时，连续划词覆盖暂存（以最新选区为准），浮动按钮重新定位
+- [ ] 5.9 超长选区：不截断（D6）；token 估算超 contextLimit 时，卡片 token 预览显示红色 + 采用后 TokenStatusBar 红条禁发；卡片上不显示截断提示
+- [ ] 5.10 **L2 单测**：panelOpen 状态（4 例：port 连接置 true/port 断开置 false/初始 false/多 port 连接最后一个断开置 false）
+- [ ] 5.11 **L2 单测**：消息分流（6 例：panelOpen=true 直接转发 AT_SELECTION_DELIVER + 回复 delivered/panelOpen=false 暂存 + 回复 showFloatButton/AT_FLOAT_BUTTON_CLICK 触发 sidePanel.open/AT_PANEL_READY 有暂存则转发/AT_PANEL_READY 无暂存忽略/连续划词覆盖暂存）
+- [ ] 5.12 **L2 单测**：冷启动竞态（3 例：面板未就绪时暂存/面板就绪后直接转发/AT_PANEL_READY 后转发暂存并清空）—— 与 5.11 部分重叠，可合并
 
-**完成判据**：侧边栏未打开时划词点击，面板打开后素材卡片出现（不丢失）；连续划词发送出现多张卡片；超长选区不截断但超限时禁发；三门禁全绿。
+**完成判据**：侧边栏已打开时划词，素材卡片直接出现（零点击）；侧边栏未打开时划词，显示浮动按钮，点击后打开侧边栏并填入；连续划词覆盖暂存；超长选区不截断但超限时禁发；三门禁全绿。
 
 ## 6. 上下文供给·网页侧（对应 T2.6）
 
@@ -118,12 +125,19 @@
 
 ## 执行顺序说明
 
-严格按 1→2→3→4→5→6→7 执行。其中：
-- 任务 1（content script 基础）是任务 2（浮动按钮）的前置
-- 任务 2（浮动按钮）和任务 3（右键菜单）共享消息链路，任务 5（消息容错）是两者的前置依赖——实际执行中任务 5 的基础路由可在任务 2 之前先搭好骨架，任务 2/3 完成后再补容错
-- 任务 4（素材卡片）依赖任务 5 的消息投递（`AT_SELECTION_DELIVER`）
-- 任务 6（上下文供给）依赖任务 1（content script）和任务 4（素材卡片预览），可在任务 4 基本可用后并行开发
-- 任务 7（归档）在全部完成后执行
+严格按 1→2→3→4→5→6→7 编号勾选。实际开发流建议如下（任务编号不变，仅执行顺序微调）：
 
-**建议实际执行流**：1 → 5（路由骨架）→ 2 → 3 → 4 → 6 → 5（容错补全）→ 7
-（任务编号不变，仅执行顺序微调，最终按编号勾选）
+1. **任务 1**（content script 基础）：选区监听 + 有效性判定，是所有后续任务的前置
+2. **任务 5 骨架**（panel-state + messaging-router 基础）：先搭好 `panelOpen` 状态维护和消息分流骨架，这样任务 2/3 可以直接对接分流逻辑
+3. **任务 2**（浮动按钮）：依赖任务 1（选区回调）和任务 5 骨架（分流响应）
+4. **任务 3**（右键菜单）：依赖任务 5 骨架（分流逻辑），可与任务 2 并行
+5. **任务 4**（素材卡片）：依赖任务 5（`AT_SELECTION_DELIVER` 投递），sidepanel 侧 UI
+6. **任务 6**（上下文供给）：依赖任务 1（content script）和任务 4（卡片预览），可在任务 4 基本可用后并行
+7. **任务 5 补全**（容错 + 单测）：在 2/3/4/6 都对接后，补全冷启动竞态、重复发送等容错场景和完整 L2 测试
+8. **任务 7**（归档）：全部完成后执行
+
+**关键依赖链**：
+- 任务 5 的 `panelOpen` 状态（port 连接检测）是任务 2/3 分流的前提
+- 任务 5 的 `AT_SELECTION_DELIVER` 投递是任务 4 素材卡片的触发源
+- 任务 2/3 共享任务 5 的分流逻辑，区别仅在于消息来源（`source: 'float-button' | 'context-menu' | 'auto-fill'`）
+- 任务 6 的上下文采集在 content script 侧，采集后随 `AT_SELECTION_SEND` 一并传给 background

@@ -66,6 +66,8 @@ M2 的目标是上线 **content script**，把划词链路从 0 到 1 跑通：�
 | D13 | **±相邻段落采集算法**：以选区所在的块级元素（`<p>`/`<li>`/`<div>`/`<h1-6>` 等）为中心，向前取一个非空兄弟块级元素、向后取一个非空兄弟块级元素；若选区跨越多个块级元素，则以选区起点所在块为中心；空段落/纯空白段落跳过 | T2.6；tech §8.2；纯函数可单测 |
 | D14 | **权限新增**：`contextMenus`（右键菜单必需）；manifest permissions 从 `["sidePanel", "storage"]` 变为 `["sidePanel", "storage", "contextMenus"]`；不新增 host_permissions（`<all_urls>` 已在 M0 声明） | tech §3；最小权限原则；FR-7.2 |
 | D15 | **测试按 techniqueStack §10 四层金字塔执行**；每个 T*.x 对应测试写完且 `pnpm test` 全绿才算完成；T2.1（选区判定纯函数）、T2.6（三档组装纯函数+截断边界+失败降级标注）必须有 L1 单测；content script 行为用 L2（vi.stubGlobal + fakeBrowser） | roadmap §1 DoD（v0.5）；techniqueStack §10 |
+| D16 | **侧边栏状态感知分流**：划词后 content script 将选区发送给 background，background 根据侧边栏是否已打开决定行为——① 侧边栏**已打开**：直接转发给 sidepanel 创建素材卡片（零点击，划词即暂存）；② 侧边栏**未打开**：回复 content script 显示浮动按钮，用户点击后才打开侧边栏并填入。background 用 long-lived port（`chrome.runtime.connect`）维护 `panelOpen` 状态，sidepanel 连接时置 true、断开时置 false | 用户反馈（2026-09-15）：已打开对话时直接填入素材卡片即可，不需要浮动按钮；减少已打开用户的操作步骤 |
+| D17 | **多窗口边缘情况暂不处理**：`panelOpen` 为全局状态（不区分窗口），若窗口 A 打开了侧边栏、用户在窗口 B 划词，素材会出现在窗口 A 的侧边栏。M2 标注为已知限制，后续可通过 payload 携带 `windowId` + sidepanel 过滤解决 | 实现复杂度权衡；大多数用户单窗口使用；M2 优先保证主路径体验 |
 
 ## 4. 上下文与约束（Context & Constraints）
 
@@ -104,16 +106,16 @@ M2 的目标是上线 **content script**，把划词链路从 0 到 1 跑通：�
     createdAt: number;
   }
   ```
-- **消息传递 payload**（D10）：
+- **消息传递 payload**（D10 / D16）：
   ```ts
-  // content script → background
+  // content script → background（划词后统一发送，background 分流）
   interface SelectionSendMessage {
     type: 'AT_SELECTION_SEND';
     payload: {
       text: string;
       title: string;
       url: string;
-      source: 'float-button' | 'context-menu';
+      source: 'float-button' | 'context-menu' | 'auto-fill';
       // context 数据由 content script 采集后一并传入（T2.6）
       contextData?: {
         selection: string;
@@ -124,13 +126,28 @@ M2 的目标是上线 **content script**，把划词链路从 0 到 1 跑通：�
       };
     };
   }
-  // sidepanel → background（初始化完成）
+  // background → content script（回复：是否已直接投递，还是显示浮动按钮）
+  interface SelectionSendResponse {
+    delivered: boolean;       // true: 已直接转发给 sidepanel；false: 未投递
+    showFloatButton?: boolean; // true: content script 显示浮动按钮
+  }
+  // content script → background（浮动按钮被点击，background 取出暂存的 payload）
+  interface FloatButtonClickMessage {
+    type: 'AT_FLOAT_BUTTON_CLICK';
+  }
+  // background → sidepanel（最终投递，创建素材卡片）
+  interface SelectionDeliverMessage {
+    type: 'AT_SELECTION_DELIVER';
+    payload: SelectionSendMessage['payload'];
+  }
+  // sidepanel → background（初始化完成，冷启动时触发暂存消息转发）
   interface PanelReadyMessage {
     type: 'AT_PANEL_READY';
   }
   ```
+- **sidepanel 状态检测**（D16）：sidepanel 入口 `main()` 中 `chrome.runtime.connect({ name: 'at-sidepanel' })` 建立 long-lived port；background `onConnect` 监听 `port.name === 'at-sidepanel'` → `panelOpen = true`；`port.onDisconnect` → `panelOpen = false`。无需轮询，状态实时。
 
-### 4.2 content script 架构（T2.1–T2.3, T2.6）
+### 4.2 content script 架构（T2.1–T2.3, T2.6, D16）
 
 ```
 entrypoints/content.ts（WXT content script 入口）
@@ -139,20 +156,27 @@ entrypoints/content.ts（WXT content script 入口）
 │   ├── validator.ts      # 选区有效性判定纯函数（L1 单测）
 │   └── context.ts        # 上下文采集：±相邻段落 / 整页正文（readability）
 ├── float-button/
-│   ├── index.ts          # Shadow DOM 创建 + 挂载
+│   ├── index.ts          # Shadow DOM 创建 + 挂载（仅 panelOpen=false 时显示，D16）
 │   ├── position.ts       # 选区右下角定位 + 防溢出纯函数（L1 单测）
 │   └── style.ts          # 内联 CSS 字符串
 └── messaging/
-    └── send.ts           # runtime.sendMessage 封装
+    └── send.ts           # runtime.sendMessage 封装 + 响应处理（D16 分流）
 ```
 
-- **selectionchange 去抖**：200ms（用户停止选择后 200ms 才显示按钮，避免拖动过程中频繁闪烁）
+- **selectionchange 去抖**：200ms（用户停止选择后 200ms 才触发后续流程，避免拖动过程中频繁闪烁）
 - **选区有效性判定**（`validator.ts`，纯函数）：
-  - 空选区（`selection.rangeCount === 0` 或 `toString() === ''`）→ 不显示
-  - 选区在 `<input>` / `<textarea>` / `[contenteditable="true"]` 内 → 不显示（FR-7.3 加分项）
-  - 选区在 `<select>` 内 → 不显示
-  - 选区纯空白（trim 后为空）→ 不显示
-  - 其余 → 显示浮动按钮
+  - 空选区（`selection.rangeCount === 0` 或 `toString() === ''`）→ 不处理
+  - 选区在 `<input>` / `<textarea>` / `[contenteditable="true"]` 内 → 不处理（FR-7.3 加分项）
+  - 选区在 `<select>` 内 → 不处理
+  - 选区纯空白（trim 后为空）→ 不处理
+  - 其余 → 进入分流流程
+- **分流流程**（D16，核心）：
+  1. 选区有效 → 采集上下文数据（默认 nearby 档，T2.6）
+  2. `chrome.runtime.sendMessage({ type: 'AT_SELECTION_SEND', payload })` → background
+  3. 等待 background 回复：
+     - `{ delivered: true }` → 侧边栏已打开，已直接投递 → **不显示浮动按钮**（可选：显示短暂 toast 反馈"已填入在伴侧边栏"，M2 先不做）
+     - `{ delivered: false, showFloatButton: true }` → 侧边栏未打开 → **显示浮动按钮**
+  4. 浮动按钮点击 → `chrome.runtime.sendMessage({ type: 'AT_FLOAT_BUTTON_CLICK' })` → background 打开侧边栏并转发暂存的 payload → 隐藏浮动按钮
 - **浮动按钮定位**（`position.ts`，纯函数）：
   - 取选区 `Range.getBoundingClientRect()` 的右下角坐标 `(right, bottom)`
   - 按钮尺寸 32×32px，偏移 right+8, bottom+8
@@ -160,23 +184,44 @@ entrypoints/content.ts（WXT content script 入口）
   - 页面滚动时重新定位（监听 `scroll` 事件，捕获阶段）
 - **图标**：使用内联 SVG（Atmate 图标，M0 已生成的图标可复用为 base64 或直接 SVG path）
 
-### 4.3 background 架构（T2.3, T2.5）
+### 4.3 background 架构（T2.3, T2.5, D16）
 
 ```
 entrypoints/background.ts（WXT background 入口，M0 已有 sidePanel.open 逻辑）
-├── context-menus.ts      # 右键菜单创建与点击处理
-├── pending-material.ts    # 冷启动暂存（D11）
-└── messaging-router.ts    # 消息路由：content → pending → sidepanel
+├── context-menus.ts        # 右键菜单创建与点击处理
+├── panel-state.ts           # panelOpen 状态维护（port 连接检测，D16）
+├── pending-material.ts      # 冷启动暂存（D11）+ 浮动按钮暂存（D16）
+└── messaging-router.ts      # 消息路由：content → 分流（直接投递 / 显示浮动按钮）→ sidepanel
 ```
+
+- **panelOpen 状态**（D16）：
+  - `panelOpen: boolean`，初始 false
+  - sidepanel `main()` 中 `chrome.runtime.connect({ name: 'at-sidepanel' })`
+  - background `chrome.runtime.onConnect`：`port.name === 'at-sidepanel'` → `panelOpen = true`
+  - `port.onDisconnect` → `panelOpen = false`
+  - 多窗口不区分（D17 已知限制）
+
+- **消息分流逻辑**（D16，核心）：
+  - 收到 `AT_SELECTION_SEND`（来自 content script 或右键菜单）：
+    1. 若 `panelOpen === true` → 直接 `chrome.runtime.sendMessage({ type: 'AT_SELECTION_DELIVER', payload })` 广播给 sidepanel → 回复 content script `{ delivered: true }` → content script 不显示浮动按钮
+    2. 若 `panelOpen === false` → `setPending(payload)` 暂存 → 回复 content script `{ delivered: false, showFloatButton: true }` → content script 显示浮动按钮
+  - 收到 `AT_FLOAT_BUTTON_CLICK`（来自 content script，用户点击浮动按钮）：
+    1. `sidePanel.open({ windowId })`（打开当前窗口的侧边栏）
+    2. 暂存的 payload 已在 `pending-material` 中
+    3. sidepanel 打开后发送 `AT_PANEL_READY` → background 转发暂存的 `AT_SELECTION_DELIVER` → 清空暂存
+  - 收到 `AT_PANEL_READY`（来自 sidepanel，初始化完成）：
+    - 若 `hasPending()` → 转发 `AT_SELECTION_DELIVER` → 清空暂存
+    - 若无暂存 → 忽略
 
 - **右键菜单**：
   - `chrome.contextMenus.create({ id: 'at-send-selection', title: '发送选中内容到在伴 AI 侧边栏', contexts: ['selection'] })`
-  - `onClicked` 回调中取 `info.selectionText` + `tab.title` + `tab.url`，走与浮动按钮相同的消息链路
-- **冷启动暂存**（D11）：
-  - `pendingMaterial: SelectionSendMessage['payload'] | null`（内存变量，SW 重启后丢失——可接受，因为用户点击时面板会打开，SW 生命周期内消息可送达）
-  - 收到 `AT_SELECTION_SEND`：先 `sidePanel.open({ windowId })`，检查 sidepanel 是否已就绪（通过 `runtime.getContexts` 或简单的 `panelReady` 标志），未就绪则暂存
-  - 收到 `AT_PANEL_READY`：若有暂存则转发给 sidepanel，清空暂存
-  - 若 sidepanel 已就绪：直接 `runtime.sendMessage` 转发（注意：sidepanel 是 extension page，可用 `chrome.runtime.sendMessage` 广播）
+  - `onClicked` 回调中取 `info.selectionText` + `tab.title` + `tab.url`，构造 `AT_SELECTION_SEND` 消息（`source: 'context-menu'`），走与 content script 相同的分流逻辑
+  - selectionText 为空时忽略（不发送、不打开面板）
+
+- **冷启动暂存**（D11，与 D16 整合）：
+  - `pendingMaterial: SelectionSendPayload | null`（内存变量）
+  - 侧边栏未打开时，划词消息暂存于此；浮动按钮点击后 `sidePanel.open()`，等 `AT_PANEL_READY` 后转发
+  - 连续划词（未点击按钮）时，新暂存覆盖旧暂存（以最新选区为准）
 
 ### 4.4 sidepanel 素材卡片 UI（T2.4）
 
@@ -192,7 +237,7 @@ components/chat/
 │   ├── token 预览："≈xxx token"（联动 TokenStatusBar 估算）
 │   ├── 落点提示："将发送至：<会话名>" + "转新会话"按钮
 │   └── 操作：采用 / 丢弃
-└── ChatView.tsx           # 集成：监听 AT_SELECTION_SEND → 创建 MaterialCard
+└── ChatView.tsx           # 集成：监听 AT_SELECTION_DELIVER（background 分流后最终投递）→ 创建 MaterialCard
 ```
 
 - **采用行为**：点击"采用"后，将卡片的最终文本（原文+补充说明+上下文组装）填入 Composer 输入框，卡片从列表移除；若有多张卡片，依次采用（每张填入后追加到 Composer，用空行分隔）
@@ -265,6 +310,12 @@ components/chat/
 | 页面卸载时选区监听 | `visibilitychange` / `beforeunload` 时移除浮动按钮，避免内存泄漏 |
 | 选区跨 iframe | 本里程碑不处理跨 iframe 选区（content script 注入到每个 frame 但选区范围限于当前 frame）；标注为已知限制 |
 | sidepanel 已打开但非当前标签页 | `sidePanel.open()` 会前置面板；消息通过 runtime.sendMessage 送达 |
+| 侧边栏已打开时划词（D16） | background 直接转发 `AT_SELECTION_DELIVER`，sidepanel 创建素材卡片；content script 不显示浮动按钮；用户若只是想复制文本，可丢弃素材卡片 |
+| 侧边栏未打开时划词（D16） | background 暂存 payload + 回复显示浮动按钮；用户点击浮动按钮 → `sidePanel.open()` + 等 `AT_PANEL_READY` → 转发暂存 |
+| 划词后未点击浮动按钮，重新划词 | 新暂存覆盖旧暂存（以最新选区为准）；浮动按钮重新定位到新选区 |
+| 浮动按钮显示后用户点击页面其他地方 | 浮动按钮保持显示（不自动消失）；用户可手动点击页面空白处取消选区后按钮消失（selectionchange 触发空选区判定） |
+| sidepanel port 断开但 panelOpen 状态未及时更新 | 极端情况：sidepanel 崩溃导致 port 断开但 onDisconnect 未触发。M2 不做心跳检测，依赖 Chrome 的 port 机制可靠性；若出现状态不一致，用户重新打开侧边栏即可修正 |
+| 多窗口划词（D17） | panelOpen 为全局状态，窗口 A 打开侧边栏时，窗口 B 划词会直接投递到窗口 A 的侧边栏。M2 已知限制，后续通过 windowId 过滤解决 |
 | 采用时 Composer 已有文本 | 追加到末尾，用空行分隔；不覆盖已有文本 |
 
 ### 4.7 性能约束（NFR-1）
@@ -293,18 +344,32 @@ components/chat/
 
 ## 5. 交互稿要点
 
-### 5.1 划词 → 浮动按钮
+### 5.1 划词分流（D16，核心交互）
 
+用户划词后，系统根据侧边栏状态自动分流：
+
+**场景 A：侧边栏已打开 → 零点击直接填入**
 1. 用户在网页上选中一段文字（鼠标松开后 200ms）
-2. 选区右下角出现 32×32 圆形图标按钮（Atmate 图标，深色半透明背景）
-3. hover 按钮：显示 tooltip "发送到在伴"，按钮背景变亮
-4. 点击按钮：按钮消失（立即反馈），Chrome 侧边栏打开，侧边栏内出现素材卡片
+2. content script 采集选区 + 上下文（默认 nearby 档）→ 发送给 background
+3. background 检测到 `panelOpen === true` → 直接转发给 sidepanel
+4. sidepanel 创建素材卡片（从下往上滑入）
+5. **不显示浮动按钮**（用户视线在网页上，素材卡片在侧边栏滑入动画提供反馈）
+6. 用户切换到侧边栏 → 编辑/补充 → 采用 → 发送
+
+**场景 B：侧边栏未打开 → 浮动按钮 + 一次点击**
+1. 用户在网页上选中一段文字（鼠标松开后 200ms）
+2. content script 采集选区 + 上下文 → 发送给 background
+3. background 检测到 `panelOpen === false` → 暂存 payload → 回复显示浮动按钮
+4. 选区右下角出现 32×32 圆形图标按钮（Atmate 图标，深色半透明背景）
+5. hover 按钮：显示 tooltip "发送到在伴"，按钮背景变亮
+6. 点击按钮：按钮消失（立即反馈）→ background `sidePanel.open()` → 侧边栏打开 → sidepanel 就绪后转发暂存 → 素材卡片出现
 
 ### 5.2 右键菜单
 
 1. 用户选中文字后右键
 2. 菜单中出现"发送选中内容到在伴 AI 侧边栏"
-3. 点击：侧边栏打开，出现素材卡片（来源标记为 context-menu）
+3. 点击：走与划词相同的分流逻辑（D16）——侧边栏已打开则直接填入，未打开则打开侧边栏并填入
+4. 素材卡片来源标记为 `context-menu`
 
 ### 5.3 素材卡片
 
@@ -322,14 +387,16 @@ components/chat/
 
 ### 5.4 多卡片场景
 
-- 连续划词发送：卡片依次追加，最新的在最下方
+- 侧边栏已打开时连续划词：每张卡片自动依次追加，最新的在最下方（零点击积累）
+- 侧边栏未打开时连续划词：浮动按钮暂存最新选区（覆盖旧暂存），点击后只创建一张卡片（最新选区）
 - 每张卡片独立操作（采用/丢弃）
 - 采用顺序：用户可按任意顺序采用；采用的内容依次追加到 Composer
 
 ## 6. 与 M1 的接口对接
 
 - **Composer 输入框**：M1 的 `Composer.tsx` 需要暴露 `setValue` / `appendValue` 方法（或通过 props/state 提升），供素材卡片采用时填入文本
-- **ChatView**：需要监听 `chrome.runtime.onMessage` 接收 `AT_SELECTION_SEND`，创建 MaterialCard
+- **ChatView**：需要监听 `chrome.runtime.onMessage` 接收 `AT_SELECTION_DELIVER`（background 分流后的最终投递），创建 MaterialCard
+- **sidepanel 入口**：M1 的 `entrypoints/sidepanel.ts` `main()` 中需新增 `chrome.runtime.connect({ name: 'at-sidepanel' })`（D16 状态检测）和 `chrome.runtime.sendMessage({ type: 'AT_PANEL_READY' })`（冷启动就绪通知）
 - **TokenStatusBar**：素材卡片的 token 预览复用 M1 的 `estimateTokens` 函数
 - **会话管理**：采用时若为"转新会话"，复用 M1 的创建会话逻辑（默认角色「在伴 Atmate」）
 - **storage**：`uiPrefs.defaultContextScope` 新增字段，M1 的 storage schema 需兼容（旧数据无此字段时默认 `'nearby'`）
