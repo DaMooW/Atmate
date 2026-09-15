@@ -12,6 +12,7 @@ export default defineConfig({
     include: ['tests/**/*.test.{ts,tsx}'],
     passWithNoTests: false,
     environment: 'node',
+    setupFiles: ['./tests/setup.ts'],
   },
   resolve: {
     alias: {

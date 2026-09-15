@@ -1,7 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { MessageList } from './MessageList';
-import { Composer } from './Composer';
+import { Composer, type ComposerHandle } from './Composer';
 import { TokenStatusBar } from './TokenStatusBar';
+import { MaterialCardList } from './MaterialCardList';
+import { buildUserPrompt } from './promptBuilder';
+import type { MaterialCard, MaterialTarget } from './materialTypes';
 import { useStorageStore } from '../../infra/storage/store';
 import { streamChat } from '../../infra/llm/client';
 import { generateId } from '../../core/id';
@@ -14,10 +17,13 @@ import {
 } from '../../core/tokens';
 import type { ChatMessage, Session } from '../../core/types';
 import type { StreamChatHandle } from '../../infra/llm/client';
+import type { SelectionSendPayload } from '../../core/messages';
 
 /**
- * 对话视图（spec M1 T1.5）。
+ * 对话视图（spec M1 T1.5，M2 T2.4 扩展）。
  * 集成 LLM 客户端：发送 → 流式渲染 → 存盘；停止；错误展示 + 重试。
+ *
+ * M2 扩展：监听 AT_SELECTION_DELIVER，创建素材卡片；采用后填入输入框。
  */
 interface Props {
   currentSessionId: string | null;
@@ -35,6 +41,51 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const streamHandleRef = useRef<StreamChatHandle | null>(null);
   const lastUserMessageRef = useRef<string | null>(null);
+  const composerRef = useRef<ComposerHandle>(null);
+
+  // M2 T2.4：素材卡片状态
+  const [materialCards, setMaterialCards] = useState<MaterialCard[]>([]);
+  // 素材落点：默认当前激活会话，无激活会话则新建（D7）
+  const [materialTarget, setMaterialTarget] = useState<MaterialTarget>({
+    sessionId: currentSessionId,
+    sessionName: currentSessionId ? '当前会话' : '新会话',
+  });
+
+  // 同步 currentSessionId 变化到 materialTarget
+  useEffect(() => {
+    setMaterialTarget((prev) => {
+      if (prev.sessionId === currentSessionId) return prev;
+      return {
+        sessionId: currentSessionId,
+        sessionName: currentSessionId ? '当前会话' : '新会话',
+      };
+    });
+  }, [currentSessionId]);
+
+  // M2 T2.4：监听 AT_SELECTION_DELIVER 消息（background 转发的划词素材）
+  useEffect(() => {
+    const listener = (message: unknown) => {
+      const msg = message as { type?: string; payload?: SelectionSendPayload };
+      if (msg.type !== 'AT_SELECTION_DELIVER' || !msg.payload) return;
+
+      const payload = msg.payload;
+      const newCard: MaterialCard = {
+        id: generateId(),
+        text: payload.text,
+        title: payload.title ?? '',
+        url: payload.url ?? '',
+        source: payload.source,
+        contextScope: uiPrefs.defaultContextScope,
+        contextData: payload.contextData,
+        userNote: '',
+        createdAt: Date.now(),
+      };
+      setMaterialCards((prev) => [...prev, newCard]);
+    };
+
+    browser.runtime.onMessage.addListener(listener);
+    return () => browser.runtime.onMessage.removeListener(listener);
+  }, [uiPrefs.defaultContextScope]);
 
   const activeConfig = apiConfigs.find((c) => c.id === activeApiConfigId) ?? null;
   const currentSession = sessions.find((s) => s.id === currentSessionId) ?? null;
@@ -213,6 +264,61 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
     }
   }, [handleSend]);
 
+  // ── M2 T2.4：素材卡片操作 ──
+
+  /** 采用单张卡片：组装 prompt 填入输入框，移除卡片 */
+  const handleAdoptCard = useCallback((card: MaterialCard) => {
+    const prompt = buildUserPrompt({
+      selectedText: card.text,
+      contextScope: card.contextScope,
+      previousParagraph: card.contextData?.beforeParagraph,
+      nextParagraph: card.contextData?.afterParagraph,
+      pageContent: card.contextData?.fullPage,
+      userNote: card.userNote,
+    });
+    composerRef.current?.appendText(prompt);
+    setMaterialCards((prev) => prev.filter((c) => c.id !== card.id));
+    composerRef.current?.focus();
+  }, []);
+
+  /** 丢弃单张卡片 */
+  const handleDiscardCard = useCallback((cardId: string) => {
+    setMaterialCards((prev) => prev.filter((c) => c.id !== cardId));
+  }, []);
+
+  /** 更新卡片字段 */
+  const handleUpdateCard = useCallback((cardId: string, updates: Partial<MaterialCard>) => {
+    setMaterialCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, ...updates } : c)));
+  }, []);
+
+  /** 全部采用 */
+  const handleAdoptAll = useCallback(() => {
+    materialCards.forEach((card) => {
+      const prompt = buildUserPrompt({
+        selectedText: card.text,
+        contextScope: card.contextScope,
+        previousParagraph: card.contextData?.beforeParagraph,
+        nextParagraph: card.contextData?.afterParagraph,
+        pageContent: card.contextData?.fullPage,
+        userNote: card.userNote,
+      });
+      composerRef.current?.appendText(prompt);
+    });
+    setMaterialCards([]);
+    composerRef.current?.focus();
+  }, [materialCards]);
+
+  /** 全部丢弃 */
+  const handleDiscardAll = useCallback(() => {
+    setMaterialCards([]);
+  }, []);
+
+  /** 切换到新会话（D7） */
+  const handleSwitchToNewSession = useCallback(() => {
+    onSessionChange(''); // 空字符串表示新建会话（ensureSession 会创建）
+    setMaterialTarget({ sessionId: null, sessionName: '新会话' });
+  }, [onSessionChange]);
+
   return (
     <div className="flex h-full flex-col">
       <MessageList
@@ -223,6 +329,17 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         showSetupGuide={apiConfigs.length === 0}
         onNavigateToSettings={onNavigateToSettings}
       />
+      {/* M2 T2.4：素材卡片列表（在消息列表和 token 状态条之间） */}
+      <MaterialCardList
+        cards={materialCards}
+        target={materialTarget}
+        onSwitchToNewSession={handleSwitchToNewSession}
+        onAdopt={handleAdoptCard}
+        onDiscard={handleDiscardCard}
+        onUpdate={handleUpdateCard}
+        onAdoptAll={handleAdoptAll}
+        onDiscardAll={handleDiscardAll}
+      />
       <TokenStatusBar
         used={contextUsed}
         limit={contextLimit}
@@ -230,6 +347,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         estimated
       />
       <Composer
+        ref={composerRef}
         onSend={handleSend}
         onStop={handleStop}
         streaming={streaming}
