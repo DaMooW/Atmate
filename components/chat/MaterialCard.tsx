@@ -3,14 +3,13 @@ import type { MaterialCard as MaterialCardType } from './materialTypes';
 import { estimateTextTokens } from './promptBuilder';
 
 /**
- * 单张素材卡片（M2 T2.4，D3/D18/D19/D20）。
+ * 单张素材卡片（M2 T2.4，D3/D18/D19/D20/D23）。
  *
  * 功能：
  * - 来源角标（浮动按钮/右键菜单/自动填充）
  * - 页面标题 + URL
  * - 可编辑原文
- * - 上下文档位切换（selection/containing-paragraph/nearby/page）
- * - 用户补充说明
+ * - 上下文档位切换（selection/containing-paragraph/nearby/page，D23：所有档位数据已预采集）
  * - token 预览
  * - 已采用状态标识（D18：创建后默认已采用）
  * - 移除按钮（D19：移除后不参与本次发送的 prompt 组装）
@@ -42,8 +41,8 @@ const CONTEXT_SCOPE_OPTIONS: Array<{ value: MaterialCardType['contextScope']; la
 export function MaterialCard({ card, onRemove, onUpdate }: Props) {
   const [editing, setEditing] = useState(false);
 
-  // 估算 token（原文 + 补充说明）
-  const estimatedTokens = estimateTextTokens(card.text) + estimateTextTokens(card.userNote);
+  // 估算 token（原文）
+  const estimatedTokens = estimateTextTokens(card.text);
 
   return (
     <div className="bg-surface-secondary rounded-lg border border-border p-3">
@@ -131,17 +130,6 @@ export function MaterialCard({ card, onRemove, onUpdate }: Props) {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* 用户补充说明 */}
-      <div className="mb-2">
-        <input
-          type="text"
-          value={card.userNote}
-          onChange={(e) => onUpdate(card.id, { userNote: e.target.value })}
-          placeholder="补充说明（可选）..."
-          className="w-full rounded border border-border bg-surface px-2 py-1 text-sm"
-        />
       </div>
 
       {/* 底部：token 预览 + 发送时自动带入提示（D19） */}

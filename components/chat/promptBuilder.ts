@@ -1,8 +1,10 @@
 /**
- * Prompt 组装纯函数（M2 T2.4，D5/D21）。
+ * Prompt 组装纯函数（M2 T2.4，D5/D21/D24）。
  *
  * 按 D21 决策的格式组装用户输入与素材卡片：
- * 【用户需求】/【用户选中的原文】/【相关上下文】/【来源】/【补充说明】
+ * 【用户需求】/【用户选中的原文】/【相关上下文】/【来源】
+ *
+ * D24（2026-09-15）：移除补充说明字段，简化卡片交互。
  *
  * 设计原则（D21）：
  * - 结构化分段，LLM 易于解析各部分边界
@@ -36,8 +38,6 @@ export interface PromptBuildInput {
   pageTitle?: string;
   /** 页面 URL（来源信息） */
   pageUrl?: string;
-  /** 用户补充说明 */
-  userNote?: string;
 }
 
 /**
@@ -98,11 +98,6 @@ export function buildMaterialPrompt(input: PromptBuildInput): string {
     parts.push(`【来源】\n${sourceParts.join('\n')}`);
   }
 
-  // 4. 用户补充说明
-  if (input.userNote && input.userNote.trim()) {
-    parts.push(`【补充说明】\n${input.userNote.trim()}`);
-  }
-
   return parts.join('\n\n');
 }
 
@@ -147,7 +142,6 @@ export function buildFinalUserPrompt(userInput: string, adoptedCards: MaterialCa
       readabilityFailed: card.contextData?.readabilityFailed,
       pageTitle: card.title,
       pageUrl: card.url,
-      userNote: card.userNote,
     });
 
     if (materialPrompt) {

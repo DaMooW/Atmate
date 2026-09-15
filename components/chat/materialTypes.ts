@@ -1,11 +1,14 @@
 /**
- * 素材卡片类型定义（M2 T2.4，D3/D7/D18/D19）。
+ * 素材卡片类型定义（M2 T2.4，D3/D7/D18/D19/D22/D23/D24）。
  *
  * 素材卡片是划词内容进入对话前的暂存态：
- * - 用户可以编辑原文、补充说明、切换上下文档位
+ * - 用户可以编辑原文、切换上下文档位
  * - 创建后默认已采用（D18），发送时自动组装进 prompt（D19）
  * - "移除"则不参与本次发送
  * - 支持多卡片积累
+ * - D22：连续划词时与最近卡片文本有包含关系则更新而非新增
+ * - D23：创建时一次性采集所有档位的上下文数据
+ * - D24：移除 userNote（补充说明）字段
  */
 
 import type { ContextScope } from '~/core/types';
@@ -25,13 +28,11 @@ export interface MaterialCard {
   source: MaterialSource;
   /** 上下文档位（默认 containing-paragraph，D20） */
   contextScope: ContextScope;
-  /** 上下文数据（T2.6 实现后填充） */
+  /** 上下文数据（D23：创建时一次性采集所有档位） */
   contextData?: ContextData;
-  /** 用户补充说明 */
-  userNote: string;
   /** 是否已采用（D18：创建后默认 true；发送时已采用的卡片会自动组装进 prompt） */
   adopted: boolean;
-  /** 创建时间 */
+  /** 创建时间（D22：用于去重判断） */
   createdAt: number;
 }
 

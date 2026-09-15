@@ -1,21 +1,26 @@
 /**
- * selectionchange 监听器（M2 T2.1）。
+ * 选区监听器（M2 T2.1，D22）。
  *
  * 职责：
- * - 监听 document 的 selectionchange 事件
- * - 200ms 去抖（用户停止选择后才触发，避免拖动过程中频繁回调）
+ * - 监听 mouseup 事件：用户完成划词后立即触发 onValidSelection（主要路径）
+ * - 监听 selectionchange 事件：仅用于隐藏浮动按钮（选区消失/无效时），
+ *   以及键盘选择的兜底（去抖 500ms，且 mouseup 后 1 秒内不重复触发）
  * - 调用 isValidSelection 判定选区有效性
  * - 有效选区 → onValidSelection 回调；无效 → onInvalidSelection 回调（隐藏浮动按钮）
- * - 提供 destroy() 清理（页面卸载时调用，避免内存泄漏）
+ * - 提供 destroy() 清理
  *
- * 不直接操作 DOM（浮动按钮的显示/隐藏由调用方在回调中处理），
- * 保持本模块可测试、可复用。
+ * D22（2026-09-15）：原方案 selectionchange + 200ms 去抖会导致缓慢划词时
+ * 创建多张卡片。改为 mouseup 优先 + selectionchange 兜底去重，确保一次划词
+ * 只触发一次有效选区回调。
  */
 
 import { isValidSelection } from '~/core/selection/validator';
 
-/** 去抖时间（ms）：用户停止选择后多久触发回调 */
-export const SELECTION_DEBOUNCE_MS = 200;
+/** selectionchange 兜底去抖时间（ms）：键盘选择时使用 */
+export const SELECTION_CHANGE_DEBOUNCE_MS = 500;
+
+/** mouseup 后抑制 selectionchange 触发的时间窗口（ms） */
+export const MOUSEUP_SUPPRESS_WINDOW_MS = 1000;
 
 export interface SelectionMonitorCallbacks {
   /** 选区有效时触发，传入当前 Selection 对象 */
@@ -36,35 +41,69 @@ export interface SelectionMonitor {
  * @returns 监听器实例，含 destroy() 方法
  */
 export function createSelectionMonitor(callbacks: SelectionMonitorCallbacks): SelectionMonitor {
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let changeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastMouseupTime = 0;
 
+  /** 检查当前选区并触发对应回调 */
+  const checkAndTrigger = () => {
+    const selection = window.getSelection();
+    if (isValidSelection(selection) && selection) {
+      callbacks.onValidSelection(selection);
+    } else {
+      callbacks.onInvalidSelection?.();
+    }
+  };
+
+  /** mouseup 事件处理：用户完成划词后立即触发 */
+  const handleMouseUp = () => {
+    lastMouseupTime = Date.now();
+    // 清除 selectionchange 的兜底定时器（mouseup 优先）
+    if (changeDebounceTimer) {
+      clearTimeout(changeDebounceTimer);
+      changeDebounceTimer = null;
+    }
+    // 延迟一小段时间确保 selection 已更新
+    setTimeout(checkAndTrigger, 10);
+  };
+
+  /** selectionchange 事件处理：仅用于隐藏浮动按钮 + 键盘选择兜底 */
   const handleSelectionChange = () => {
-    // 清除上一次的定时器（去抖核心）
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
+    // 清除上一次的定时器
+    if (changeDebounceTimer) {
+      clearTimeout(changeDebounceTimer);
+      changeDebounceTimer = null;
     }
 
-    debounceTimer = setTimeout(() => {
-      debounceTimer = null;
+    changeDebounceTimer = setTimeout(() => {
+      changeDebounceTimer = null;
+
+      // 如果在 mouseup 抑制窗口内，跳过（mouseup 已处理）
+      if (Date.now() - lastMouseupTime < MOUSEUP_SUPPRESS_WINDOW_MS) {
+        return;
+      }
+
+      // 检查选区：无效则隐藏浮动按钮，有效（键盘选择）则触发
       const selection = window.getSelection();
       if (isValidSelection(selection) && selection) {
         callbacks.onValidSelection(selection);
       } else {
         callbacks.onInvalidSelection?.();
       }
-    }, SELECTION_DEBOUNCE_MS);
+    }, SELECTION_CHANGE_DEBOUNCE_MS);
   };
 
-  // 监听 selectionchange（在 document 上，冒泡阶段即可）
+  // 监听 mouseup（在 document 上，捕获阶段确保先于其他处理）
+  document.addEventListener('mouseup', handleMouseUp, true);
+  // 监听 selectionchange（在 document 上）
   document.addEventListener('selectionchange', handleSelectionChange);
 
   return {
     destroy() {
+      document.removeEventListener('mouseup', handleMouseUp, true);
       document.removeEventListener('selectionchange', handleSelectionChange);
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
+      if (changeDebounceTimer) {
+        clearTimeout(changeDebounceTimer);
+        changeDebounceTimer = null;
       }
     },
   };

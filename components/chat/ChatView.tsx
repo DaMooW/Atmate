@@ -63,25 +63,59 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
   }, [currentSessionId]);
 
   // M2 T2.4：监听 AT_SELECTION_DELIVER 消息（background 转发的划词素材）
+  // D22：去重逻辑——新卡片与最近卡片（5秒内、同一URL）文本有包含关系时更新而非新增
   useEffect(() => {
     const listener = (message: unknown) => {
       const msg = message as { type?: string; payload?: SelectionSendPayload };
       if (msg.type !== 'AT_SELECTION_DELIVER' || !msg.payload) return;
 
       const payload = msg.payload;
-      const newCard: MaterialCard = {
-        id: generateId(),
-        text: payload.text,
-        title: payload.title ?? '',
-        url: payload.url ?? '',
-        source: payload.source,
-        contextScope: uiPrefs.defaultContextScope,
-        contextData: payload.contextData,
-        userNote: '',
-        adopted: true, // D18：创建后默认已采用
-        createdAt: Date.now(),
-      };
-      setMaterialCards((prev) => [...prev, newCard]);
+      const newText = payload.text.trim();
+      const newUrl = payload.url ?? '';
+      const now = Date.now();
+
+      setMaterialCards((prev) => {
+        // 查找最近一张可合并的卡片：5秒内创建、同一URL、文本有包含关系
+        const mergeCandidate = prev.find((card) => {
+          if (now - card.createdAt > 5000) return false;
+          if (card.url !== newUrl) return false;
+          const oldText = card.text.trim();
+          if (!oldText || !newText) return false;
+          // 包含关系：新文本是旧文本的子串，或旧文本是新文本的子串
+          // 且较短文本长度至少为较长文本的 30%（避免完全不相关的短文本误合并）
+          const shorter = oldText.length < newText.length ? oldText : newText;
+          const longer = oldText.length < newText.length ? newText : oldText;
+          return longer.includes(shorter) && shorter.length >= longer.length * 0.3;
+        });
+
+        if (mergeCandidate) {
+          // 更新已有卡片：用新选区替换旧选区（新选区通常更完整/更准确）
+          return prev.map((card) =>
+            card.id === mergeCandidate.id
+              ? {
+                  ...card,
+                  text: payload.text,
+                  contextData: payload.contextData,
+                  createdAt: now, // 更新时间戳，便于后续连续划词继续合并
+                }
+              : card,
+          );
+        }
+
+        // 无可合并卡片，创建新卡片
+        const newCard: MaterialCard = {
+          id: generateId(),
+          text: payload.text,
+          title: payload.title ?? '',
+          url: newUrl,
+          source: payload.source,
+          contextScope: uiPrefs.defaultContextScope,
+          contextData: payload.contextData,
+          adopted: true, // D18：创建后默认已采用
+          createdAt: now,
+        };
+        return [...prev, newCard];
+      });
     };
 
     browser.runtime.onMessage.addListener(listener);

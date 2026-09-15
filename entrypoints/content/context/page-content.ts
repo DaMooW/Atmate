@@ -55,35 +55,52 @@ export async function extractPageContent(doc: Document = document): Promise<Page
 }
 
 /**
- * 构建完整的 ContextData（根据上下文档位采集）。
+ * 构建完整的 ContextData（采集所有档位的上下文数据，D23）。
+ *
+ * D23（2026-09-15）：原方案只采集当前档位的上下文，切换档位时数据缺失。
+ * 改为创建卡片时一次性采集所有档位（containing-paragraph / nearby / page），
+ * 切换档位时直接使用已有数据，无需异步请求。
  *
  * @param selection - 当前 Selection
- * @param contextScope - 上下文档位（selection / containing-paragraph / nearby / page）
- * @returns ContextData
+ * @returns ContextData（含所有档位的数据）
  */
-export async function buildContextData(
-  selection: Selection,
-  contextScope: 'selection' | 'containing-paragraph' | 'nearby' | 'page',
-): Promise<ContextData> {
+export async function buildContextData(selection: Selection): Promise<ContextData> {
   const base: ContextData = {
     selection: selection.toString(),
   };
 
-  if (contextScope === 'containing-paragraph') {
-    // 动态 import 避免循环依赖
-    const { getContainingParagraph } = await import('~/core/selection/context');
-    base.containingParagraph = getContainingParagraph(selection);
-  } else if (contextScope === 'nearby') {
-    // 动态 import 避免循环依赖
-    const { getNearbyParagraphs } = await import('~/core/selection/context');
-    const nearby = getNearbyParagraphs(selection);
-    base.beforeParagraph = nearby.beforeParagraph;
-    base.afterParagraph = nearby.afterParagraph;
-  } else if (contextScope === 'page') {
-    const pageResult = await extractPageContent();
-    base.fullPage = pageResult.text;
-    base.readabilityFailed = pageResult.readabilityFailed;
+  // 并行采集所有档位的上下文数据
+  const [containingResult, nearbyResult, pageResult] = await Promise.all([
+    // containing-paragraph 档（D20，默认）
+    import('~/core/selection/context').then(({ getContainingParagraph }) =>
+      getContainingParagraph(selection),
+    ),
+    // nearby 档（±相邻段落）
+    import('~/core/selection/context').then(({ getNearbyParagraphs }) =>
+      getNearbyParagraphs(selection),
+    ),
+    // page 档（整页正文，@mozilla/readability）
+    extractPageContent(),
+  ]);
+
+  // containing-paragraph
+  if (containingResult) {
+    base.containingParagraph = containingResult;
   }
+
+  // nearby
+  if (nearbyResult.beforeParagraph) {
+    base.beforeParagraph = nearbyResult.beforeParagraph;
+  }
+  if (nearbyResult.afterParagraph) {
+    base.afterParagraph = nearbyResult.afterParagraph;
+  }
+
+  // page
+  if (pageResult.text) {
+    base.fullPage = pageResult.text;
+  }
+  base.readabilityFailed = pageResult.readabilityFailed;
 
   return base;
 }

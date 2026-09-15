@@ -10,10 +10,11 @@ afterEach(() => {
 });
 
 /**
- * L3 组件测试：MaterialCard（M2 T2.4，D3/D18/D19/D20）。
+ * L3 组件测试：MaterialCard（M2 T2.4，D3/D18/D19/D20/D24）。
  *
  * 覆盖：渲染、已采用标识、来源角标、原文编辑、档位切换（含所在段落）、
- * 补充说明、移除按钮、token 预览。
+ * 移除按钮、token 预览、发送时自动带入提示。
+ * D24：移除补充说明输入框。
  */
 
 function makeCard(overrides: Partial<MaterialCardType> = {}): MaterialCardType {
@@ -24,7 +25,6 @@ function makeCard(overrides: Partial<MaterialCardType> = {}): MaterialCardType {
     url: 'https://example.com',
     source: 'float-button',
     contextScope: 'containing-paragraph', // D20：默认所在段落
-    userNote: '',
     adopted: true, // D18：默认已采用
     createdAt: Date.now(),
     ...overrides,
@@ -106,15 +106,10 @@ describe('chat/MaterialCard', () => {
     expect(containingBtn.className).toContain('bg-primary');
   });
 
-  it('输入补充说明触发 onUpdate', () => {
-    const onUpdate = vi.fn();
+  it('不显示补充说明输入框（D24：已移除）', () => {
     const card = makeCard();
-    render(<MaterialCard card={card} onRemove={vi.fn()} onUpdate={onUpdate} />);
-
-    const input = screen.getByPlaceholderText('补充说明（可选）...') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '请翻译成英文' } });
-
-    expect(onUpdate).toHaveBeenCalledWith('card-1', { userNote: '请翻译成英文' });
+    render(<MaterialCard card={card} onRemove={vi.fn()} onUpdate={vi.fn()} />);
+    expect(screen.queryByPlaceholderText('补充说明（可选）...')).not.toBeInTheDocument();
   });
 
   it('点击移除触发 onRemove（D19：移除后不参与发送）', () => {

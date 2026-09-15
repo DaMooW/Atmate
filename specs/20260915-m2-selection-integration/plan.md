@@ -146,6 +146,23 @@
 
 ---
 
+## 任务组 9：用户验收修复（D22-D24，2026-09-15）
+
+用户手动验收后提出三个问题，本任务组逐一修复。
+
+- [x] 9.1 **D22 划词去重（content script 侧）**：重写 `monitor.ts`——从 `selectionchange + 200ms 去抖` 改为 `mouseup 后立即触发（延迟 10ms）` + `selectionchange 500ms 去抖兜底（键盘选择）`，mouseup 后 1 秒内抑制 selectionchange 重复触发。导出 `SELECTION_CHANGE_DEBOUNCE_MS` 和 `MOUSEUP_SUPPRESS_WINDOW_MS`
+- [x] 9.2 **D22 划词去重（sidepanel 侧）**：修改 `ChatView.tsx` 的 `AT_SELECTION_DELIVER` 监听器——新卡片若与最近 5 秒内同一 URL 的卡片文本有包含关系（子串/超串且较短文本≥较长文本的 30%），则更新已有卡片而非新增
+- [x] 9.3 **D23 上下文数据预采集所有档位**：修改 `page-content.ts` 的 `buildContextData`——一次性采集所有档位（containing-paragraph / nearby / page），用 `Promise.all` 并行采集。修改 `send.ts` 的 `collectSelectionPayload`——移除 contextScope 参数，调用新的 buildContextData
+- [x] 9.4 **D24 移除补充说明**：修改 `MaterialCard.tsx`——移除补充说明输入框 UI；修改 `materialTypes.ts`——移除 `userNote` 字段；修改 `promptBuilder.ts`——移除 `PromptBuildInput.userNote` 和 `buildMaterialPrompt` 中的【补充说明】分段；修改 `ChatView.tsx`——创建卡片时不设置 userNote
+- [x] 9.5 **L2 测试更新**：`content-monitor.test.ts` 重写——覆盖 mouseup 优先/selectionchange 兜底/mouseup 抑制窗口/连续 mouseup/缓慢划词场景（11 例）
+- [x] 9.6 **L1 测试更新**：`prompt-builder.test.ts` 移除补充说明相关测试（3 例），更新组合场景测试（3 部分而非 4 部分）
+- [x] 9.7 **L3 测试更新**：`material-card.test.tsx` 移除补充说明输入测试，新增"不显示补充说明输入框"测试
+- [x] 9.8 spec 更新：`requirements.md` 新增 D22-D24 决策表；`plan.md` 新增任务组 9；`validation.md` 更新验收标准
+
+**完成判据**：缓慢划词只创建一张卡片（mouseup 后才触发 + sidepanel 相似选区合并）；切换到±相邻段落/整页正文档位后上下文正确显示（预采集所有档位）；卡片中无补充说明输入框；394 测试全绿；typecheck/lint/build 全通过。
+
+---
+
 ## 执行顺序说明
 
 严格按 1→2→3→4→5→6→7 编号勾选。实际开发流建议如下（任务编号不变，仅执行顺序微调）：

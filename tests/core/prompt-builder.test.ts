@@ -91,46 +91,19 @@ describe('chat/promptBuilder · buildMaterialPrompt', () => {
     expect(result).toContain('https://example.com/');
   });
 
-  it('用户补充说明：包含【补充说明】标记', () => {
-    const result = buildMaterialPrompt({
-      selectedText: '选中的文本',
-      contextScope: 'selection',
-      userNote: '请翻译成英文',
-    });
-    expect(result).toContain('【补充说明】\n请翻译成英文');
-  });
-
-  it('用户补充说明为空或纯空白时不包含标记', () => {
-    const result1 = buildMaterialPrompt({
-      selectedText: 'test',
-      contextScope: 'selection',
-      userNote: '',
-    });
-    expect(result1).not.toContain('【补充说明】');
-
-    const result2 = buildMaterialPrompt({
-      selectedText: 'test',
-      contextScope: 'selection',
-      userNote: '   ',
-    });
-    expect(result2).not.toContain('【补充说明】');
-  });
-
-  it('组合场景：选区 + 所在段落 + 来源 + 补充说明，各部分用空行分隔', () => {
+  it('组合场景：选区 + 所在段落 + 来源，各部分用空行分隔', () => {
     const result = buildMaterialPrompt({
       selectedText: 'documentation',
       contextScope: 'containing-paragraph',
       containingParagraph: 'This domain is for use in documentation examples.',
       pageTitle: 'Example Domain',
       pageUrl: 'https://example.com/',
-      userNote: '请翻译这个词',
     });
     const parts = result.split('\n\n');
-    expect(parts).toHaveLength(4); // 选区 + 上下文 + 来源 + 补充说明
+    expect(parts).toHaveLength(3); // 选区 + 上下文 + 来源
     expect(parts[0]).toBe('【用户选中的原文】\ndocumentation');
     expect(parts[1]).toContain('【相关上下文（包含选中词的段落）】');
     expect(parts[2]).toBe('【来源】\nExample Domain\nhttps://example.com/');
-    expect(parts[3]).toBe('【补充说明】\n请翻译这个词');
   });
 
   it('nearby 档位但无上下文数据时，只包含选区', () => {
@@ -166,7 +139,6 @@ describe('chat/promptBuilder · buildFinalUserPrompt', () => {
       containingParagraph:
         'This domain is for use in documentation examples without needing permission.',
     },
-    userNote: '',
     adopted: true,
     createdAt: Date.now(),
     ...overrides,
@@ -202,12 +174,6 @@ describe('chat/promptBuilder · buildFinalUserPrompt', () => {
     const result = buildFinalUserPrompt('你好', []);
     expect(result).toBe('【用户需求】\n你好');
     expect(result).not.toContain('【素材');
-  });
-
-  it('素材卡片包含补充说明时：补充说明出现在素材片段中', () => {
-    const card = createCard({ userNote: '这是一个技术术语' });
-    const result = buildFinalUserPrompt('请解释', [card]);
-    expect(result).toContain('【补充说明】\n这是一个技术术语');
   });
 
   it('用户示例场景：划中 documentation + 输入"请翻译这个词"', () => {
