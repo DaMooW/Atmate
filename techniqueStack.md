@@ -99,7 +99,7 @@ interface ApiConfig {
   vision: boolean;          // 该模型是否支持图片输入，默认 false（FR-4.6，D-010）
 }
 
-interface Role { id: string; name: string; systemPrompt: string; icon?: string; builtin: boolean; }
+interface Role { id: string; name: string; systemPrompt: string; icon?: string; builtin: boolean; }  // builtin 仅为"是否来自默认 seed"的元数据标记，不阻止编辑/删除；默认角色首次启动 seed 后与普通角色同等可操作
 
 interface MsgSource { type: 'page' | 'pdf' | 'manual'; title?: string; url?: string; }
 
@@ -133,7 +133,7 @@ type StoredPart =
 
 - 存储键（均带 `at:` 前缀——Atmate 缩写，沿用旧名免迁移）：`at:meta`（schemaVersion，做迁移）、`at:apiConfigs` + `at:activeApiConfigId`、`at:roles`、`at:sessions`、`at:uiPrefs`（含 `baseDirectiveEnabled: boolean`、`defaultContextScope: 'selection' | 'nearby' | 'page' | 'pdf-full'`、`locale: 'zh-CN' | 'en-US'`，默认 zh-CN，M6 起提供切换）。
 - **图片二进制**（M4）：不入 `storage.local`——IndexedDB（库名 `at`，Atmate 缩写；store `images:{id, mime, blob, w, h, createdAt}`）承载，消息仅存 `imageId` 引用；UI 渲染走 object URL；请求组装时解析为 `data:` URL（§6）。
-- 同步层：`createStorageStore`——读：启动一次性装载；写：UI 改动 → 写 storage → `chrome.storage.onChanged` 回流广播（多上下文一致）；所有 schema 变更走 `at:meta.schemaVersion` 迁移函数（M4 引入 v1→v2：消息内容 parts 化）。
+- 同步层：`createStorageStore`——读：启动一次性装载；写：UI 改动 → 写 storage → `chrome.storage.onChanged` 回流广播（多上下文一致）；**自身写入的回声必须抑制**：写入前登记该值的稳定指纹（对象键递归排序后序列化——storage 会重排键序，直接 stringify 匹配不上），onChanged 命中即出队忽略、未命中才按外部变更回流；否则回声滞后于后续写入时会把内存状态拉回旧快照（流式输出丢字，见 ADR-010、`specs/20260914-m1-fix-storage-echo/`）；所有 schema 变更走 `at:meta.schemaVersion` 迁移函数（M4 引入 v1→v2：消息内容 parts 化）。
 
 ## 6. LLM 接入层（infra/llm）
 
@@ -145,7 +145,7 @@ type StoredPart =
   - 事件回调：`onContent / onReasoning / onUsage / onDone / onError`；AbortController 实现"停止生成"。
 - **错误分类**：`401/403`（Key 问题）、`404`（Base URL/模型 ID 问题）、`429`（限流）、5xx、网络中断、SSE 中途断流——各自给中文可读提示与重试入口（NFR-4）。
 - **usage 采集**：流式响应若带 usage，取 `total_tokens` 计入会话累计；无则该会话标记"估算模式"。
-- **system 拼装顺序**（§8.1 基础指令的落地点）：`system = 角色提示词` +（开启时）`\n\n` + `基础指令段`。基础指令段为单一字符串常量（`core/directive.ts`），内容要求实现 mission FR-1.6 的三条（完备性判断 / 缺失清单 / 不编造）；版本化（`DIRECTIVE_V1`），改文案须升版本，历史会话按当时版本存储的副本渲染。
+- **system 拼装顺序**（§8.1 基础指令的落地点）：`system = 角色提示词` +（开启时）`\n\n` + `基础指令段`。基础指令段文本外置在 `prompts/directive-v1.md`，由 `core/directive.ts` 通过 Vite `?raw` 导入为版本化常量（`DIRECTIVE_V1`），内容要求实现 mission FR-1.6 的三条（完备性判断 / 缺失清单 / 不编造）；改文案须升版本，历史会话按当时版本存储的副本渲染。内置角色 prompt 同样外置在 `prompts/roles/*.md`，首次启动 seed 时读入 storage。
 - **图片消息构造**（M4，D-010）：素材含图时 user content 组装为 parts 数组（text / image_url 交替，`image_url` 为 data URL）；历史消息中的图片按原样重发（token 成本随之增长，剥离治理见 roadmap M5 T5.2）；`vision` 未开启而素材含图 → 拦截发送并引导（mission FR-4.6）。
 - **图片归一化管线**（side panel 内执行，content script/viewer 只上报 URL，不取字节）：`fetch(srcUrl)` → `ImageBitmap` → OffscreenCanvas 缩放（长边 ≤1568px）→ 重编码 JPEG（q 0.85）→ `data:` URL；同一 URL 会话内去重缓存。选区供给附图解析 `img.currentSrc`（已解析懒加载/srcset 的真实源）。
 
@@ -172,7 +172,7 @@ type StoredPart =
 
 ### 8.1 基础指令（Base Directive，FR-1.6 的实现面）
 
-- 文案为 `core/directive.ts` 中的版本化常量（`DIRECTIVE_V1`）；设置页提供开关（存 `at:uiPrefs.baseDirectiveEnabled`，默认 true），下一次发送生效，不追溯已发生的请求。
+- 文案外置在 `prompts/directive-v1.md`，由 `core/directive.ts` 通过 Vite `?raw` 导入为版本化常量（`DIRECTIVE_V1`）；设置页提供开关（存 `at:uiPrefs.baseDirectiveEnabled`，默认 true），下一次发送生效，不追溯已发生的请求。
 - 注入位置在 LLM 客户端拼装 system 时（§6）；UI 不把它显示为独立消息；会话导出（M5）时按实际发送内容附注。
 
 ### 8.2 上下文供给（Context Supply，FR-2.5 的实现面）
@@ -208,8 +208,9 @@ type StoredPart =
 ```
 ├ entrypoints/           # sidepanel/ · background/ · content/ · viewer(pdf) · options(复用sidepanel路由)
 ├ components/            # React 组件（按 §4 层级）
-├ core/                  # 域层：session/role/apiConfig/tokens/directive（纯函数，可单测）
+├ core/                  # 域层：session/role/apiConfig/tokens/directive/modelCapabilities（纯函数，可单测）
 ├ infra/                 # llm(客户端+SSE) · storage(同步层+schema迁移+images IDB) · browser(消息封装)
+├ prompts/               # 外置 prompt 文本：roles/*.md（默认角色 system prompt）· directive-v1.md（基础指令）；代码通过 ?raw 导入
 ├ locales/               # zh-CN.ts · en-US.ts：typed 文案字典（§1 #10，M6 上线）
 ├ assets/ specs/         # 复用样式；每个里程碑的功能 spec（见 roadmap §1）
 └ tests/
@@ -312,3 +313,4 @@ type StoredPart =
 - **ADR-007 信息缺口用提示词层解决，不引入工具层**（2026-09-13 评审）：信息不完整的需求以三件事闭环——FR-1.6 基础指令（AI 声明缺失清单）、多轮会话 + FR-2.5 上下文供给（用户补足信息）、素材卡片透明可见（无黑箱）。不做 tool calling：OpenAI 兼容端点对工具支持参差、引入 prompt injection 面与确认交互成本。待真实使用反馈证明"声明缺口"不够用后再重评（届时进入 M6 候选池）。
 - **ADR-008 图片输入只在扩展侧归一，二进制分置 IndexedDB**（2026-09-13，D-010）：content script/viewer 只上报 URL，由 side panel 统一取回、降采样（长边 ≤1568px → JPEG）、以 `data:` URL 内联发送——不要求端点回源抓图（NFR-2"仅两方"）；图片字节不入 storage.local；音频/视频维持 out of scope。
 - **ADR-009 测试分层为四层金字塔，L2 采用 fakeBrowser + vi.stubGlobal/vi.mock 而非依赖注入**（2026-09-14，2026-09-14 修订）：Chrome 扩展多上下文、强依赖 chrome API，测试策略按"越底层越纯、越容易测"组织——L1 core 纯函数（node，~60%）、L2 infra mock chrome（node，~20%）、L3 组件（jsdom，~15%）、L4 E2E（真实 Chrome，~5%，M3 后引入）。L2 不做依赖注入（方案 A）而用 WXT 内置 `wxt/testing/fake-browser` 的 `fakeBrowser`（方案 B）：项目 infra 层薄、规模小，方案 B 写得快且与 WXT 生态一致；`fakeBrowser` 提供完整 API 替身，避免手写字段遗漏。按被测代码类型分两种 mock 方式：**entrypoints**（background/content/sidepanel）的 `browser`/`defineBackground` 是 WXT 全局注入，用 `vi.stubGlobal` + 动态 import + `vi.resetModules()`；**infra 模块**（显式 import `wxt/browser`）用 `vi.mock('wxt/browser')`。fake-browser 事件用 `.trigger()` 触发、方法用 `vi.spyOn` 追踪（不是 vi.fn()）。代价是 mock 与实现耦合紧，若 chrome API 调用方式大改需同步更新 mock——但本项目 API 接触面稳定，可接受。
+- **ADR-010 本地写入回声不回填内存**（2026-09-14）：`chrome.storage.onChanged` 会把本上下文刚写入的值广播回来，且回声滞后于后续写入（实测 200 次快速写入里 199 次回声到达时存储中已是更新的值）；若把回声当外部变更套用，内存状态会被拉回旧快照——流式输出每块写一次盘，后续增量叠加在旧内容上，M1 验收实测丢掉约六成正文（服务端 793 字 / 落库 550 字）。做法：同步层写入前登记值的**稳定指纹**（对象键递归排序后序列化 + FNV-1a 32 位，FIFO 上限 512），onChanged 命中即出队忽略，未命中才按外部变更回流。**关键坑**：storage 重新序列化后对象键变为字母序，指纹必须做键序规范化，否则 325 次写入 0 命中、缺陷照旧。属 ADR-006 的补充约束，不改变"storage 为唯一真相源"。

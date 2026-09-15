@@ -60,18 +60,18 @@ Chinese (Simplified)
 
 ## Permissions Justification
 
-<!-- 当前 manifest 仅声明 sidePanel（M0 最小集，见 specs/20260913-m0-init）。 -->
+<!-- 当前 manifest 声明 sidePanel + storage（M1，见 specs/20260914-m1-sidepanel-chat）。 -->
 
 | Permission | Type | Justification |
 |------------|------|---------------|
 | `sidePanel` | permissions | 本扩展的界面就是浏览器的侧边栏：划取的内容、AI 的回复和 token 用量都在侧边栏内展示。没有这项权限就无法显示主界面。 |
+| `storage` | permissions | 在本机保存会话历史、角色预设与 API 配置（含 API Key）。所有数据仅存 chrome.storage.local，不上云、不同步、不遥测（NFR-2）。 |
 
 ### 计划追加（**尚未写入 manifest**，随对应里程碑申请，届时补写理由）
 
 | Permission | 计划里程碑 | 计划理由（待定稿） |
 |------------|-----------|-------------------|
 | `contextMenus` | M2 | 提供"发送选中内容到侧边栏"的右键菜单入口 |
-| `storage` | M1 | 在本机保存会话、角色与接口配置 |
 | `unlimitedStorage` | M4 | 图片等二进制素材缓存在本机，避免配额限制 |
 | `<all_urls>`（host_permissions） | M1/M2 | 用户在任意网站划词、并直连用户自配的接口地址；PDF 页需读取文件字节 |
 

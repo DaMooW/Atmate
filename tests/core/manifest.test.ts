@@ -17,8 +17,8 @@ const manifest = wxtConfig.manifest as Record<string, unknown> & {
 };
 
 describe('wxt.config manifest', () => {
-  it('权限最小化：仅 sidePanel', () => {
-    expect(manifest.permissions).toEqual(['sidePanel']);
+  it('权限最小化：sidePanel + storage（M1）', () => {
+    expect(manifest.permissions).toEqual(['sidePanel', 'storage']);
   });
 
   it('action 存在且无 default_popup（D8：否则 onClicked 不触发）', () => {
