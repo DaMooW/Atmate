@@ -1,8 +1,8 @@
 /**
- * content script 消息发送封装（M2 T2.2/T2.5，D16）。
+ * content script 消息发送封装（M2 T2.2/T2.5/T2.6，D16）。
  *
  * 职责：
- * - 采集选区数据（文本、标题、URL、来源）
+ * - 采集选区数据（文本、标题、URL、来源、上下文）
  * - 发送 AT_SELECTION_SEND 给 background
  * - 处理分流响应：
  *   - delivered: true → 侧边栏已打开，已直接投递（不显示浮动按钮）
@@ -11,24 +11,34 @@
  */
 
 import type { SelectionSendPayload, SelectionSendResponse, MaterialSource } from '~/core/messages';
+import type { ContextScope } from '~/core/types';
+import { buildContextData } from '../context/page-content';
+
+/** 网页侧支持的上下文档位（排除 pdf-full，PDF 页单独处理） */
+type WebContextScope = Exclude<ContextScope, 'pdf-full'>;
 
 /**
  * 采集当前选区和页面信息，构造 payload。
  *
  * @param selection - 当前 Selection 对象
  * @param source - 素材来源（float-button / context-menu / auto-fill）
- * @returns 选区消息 payload
+ * @param contextScope - 上下文档位（默认 nearby，D4）
+ * @returns 选区消息 payload（包含 contextData）
  */
-export function collectSelectionPayload(
+export async function collectSelectionPayload(
   selection: Selection,
   source: MaterialSource = 'float-button',
-): SelectionSendPayload {
+  contextScope: WebContextScope = 'nearby',
+): Promise<SelectionSendPayload> {
+  // 根据上下文档位采集 contextData（T2.6）
+  const contextData = await buildContextData(selection, contextScope);
+
   return {
     text: selection.toString(),
     title: document.title,
     url: window.location.href,
     source,
-    // contextData 在 T2.6 实现后填充
+    contextData,
   };
 }
 

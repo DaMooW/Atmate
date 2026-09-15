@@ -38,8 +38,8 @@ export default defineContentScript({
     // M2 T2.1/T2.5：选区监听 + 分流逻辑
     createSelectionMonitor({
       onValidSelection: async (selection) => {
-        // 采集选区数据
-        const payload = collectSelectionPayload(selection, 'float-button');
+        // 采集选区数据（含上下文，T2.6）
+        const payload = await collectSelectionPayload(selection, 'float-button');
 
         // 发送给 background，根据 panelOpen 状态分流
         const response = await sendSelection(payload);
