@@ -1,7 +1,7 @@
 # Chrome Web Store Listing — 在伴 Atmate
 
-> Last Updated: 2026-09-13
-> 状态：**草案**（产品尚在 M0/M1 阶段，多数文案待功能成型后定稿）
+> Last Updated: 2026-09-15
+> 状态：**草案**（产品尚在 M2 阶段，多数文案待功能成型后定稿）
 > 维护约定见 [AGENTS.md](AGENTS.md)：改动扩展（尤其权限）后同步更新本文件。
 
 ## Store Listing
@@ -60,18 +60,18 @@ Chinese (Simplified)
 
 ## Permissions Justification
 
-<!-- 当前 manifest 声明 sidePanel + storage（M1，见 specs/20260914-m1-sidepanel-chat）。 -->
+<!-- 当前 manifest 声明 sidePanel + storage + contextMenus（M2，见 specs/20260915-m2-selection-integration）。 -->
 
 | Permission | Type | Justification |
 |------------|------|---------------|
 | `sidePanel` | permissions | 本扩展的界面就是浏览器的侧边栏：划取的内容、AI 的回复和 token 用量都在侧边栏内展示。没有这项权限就无法显示主界面。 |
 | `storage` | permissions | 在本机保存会话历史、角色预设与 API 配置（含 API Key）。所有数据仅存 chrome.storage.local，不上云、不同步、不遥测（NFR-2）。 |
+| `contextMenus` | permissions | 提供"发送选中内容到在伴 AI 侧边栏"右键菜单项，作为浮动按钮的替代入口。用户选中文字后右键即可发送，无需寻找浮动按钮。 |
 
 ### 计划追加（**尚未写入 manifest**，随对应里程碑申请，届时补写理由）
 
 | Permission | 计划里程碑 | 计划理由（待定稿） |
 |------------|-----------|-------------------|
-| `contextMenus` | M2 | 提供"发送选中内容到侧边栏"的右键菜单入口 |
 | `unlimitedStorage` | M4 | 图片等二进制素材缓存在本机，避免配额限制 |
 | `<all_urls>`（host_permissions） | M1/M2 | 用户在任意网站划词、并直连用户自配的接口地址；PDF 页需读取文件字节 |
 

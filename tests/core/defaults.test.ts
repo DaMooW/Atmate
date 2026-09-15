@@ -30,7 +30,7 @@ describe('core/defaults · createInitialState', () => {
 describe('core/defaults · DEFAULT_UI_PREFS', () => {
   it('包含所有必需字段', () => {
     expect(DEFAULT_UI_PREFS.baseDirectiveEnabled).toBe(true);
-    expect(DEFAULT_UI_PREFS.defaultContextScope).toBe('selection');
+    expect(DEFAULT_UI_PREFS.defaultContextScope).toBe('containing-paragraph');
     expect(DEFAULT_UI_PREFS.locale).toBe('zh-CN');
   });
 });

@@ -1,7 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { MessageList } from './MessageList';
-import { Composer } from './Composer';
+import { Composer, type ComposerHandle } from './Composer';
 import { TokenStatusBar } from './TokenStatusBar';
+import { MaterialCardList } from './MaterialCardList';
+import { buildFinalUserPrompt } from './promptBuilder';
+import type { MaterialCard, MaterialTarget } from './materialTypes';
 import { useStorageStore } from '../../infra/storage/store';
 import { streamChat } from '../../infra/llm/client';
 import { generateId } from '../../core/id';
@@ -14,10 +17,13 @@ import {
 } from '../../core/tokens';
 import type { ChatMessage, Session } from '../../core/types';
 import type { StreamChatHandle } from '../../infra/llm/client';
+import type { SelectionSendPayload } from '../../core/messages';
 
 /**
- * 对话视图（spec M1 T1.5）。
+ * 对话视图（spec M1 T1.5，M2 T2.4 扩展）。
  * 集成 LLM 客户端：发送 → 流式渲染 → 存盘；停止；错误展示 + 重试。
+ *
+ * M2 扩展：监听 AT_SELECTION_DELIVER，创建素材卡片；采用后填入输入框。
  */
 interface Props {
   currentSessionId: string | null;
@@ -35,6 +41,86 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const streamHandleRef = useRef<StreamChatHandle | null>(null);
   const lastUserMessageRef = useRef<string | null>(null);
+  const composerRef = useRef<ComposerHandle>(null);
+
+  // M2 T2.4：素材卡片状态
+  const [materialCards, setMaterialCards] = useState<MaterialCard[]>([]);
+  // 素材落点：默认当前激活会话，无激活会话则新建（D7）
+  const [materialTarget, setMaterialTarget] = useState<MaterialTarget>({
+    sessionId: currentSessionId,
+    sessionName: currentSessionId ? '当前会话' : '新会话',
+  });
+
+  // 同步 currentSessionId 变化到 materialTarget
+  useEffect(() => {
+    setMaterialTarget((prev) => {
+      if (prev.sessionId === currentSessionId) return prev;
+      return {
+        sessionId: currentSessionId,
+        sessionName: currentSessionId ? '当前会话' : '新会话',
+      };
+    });
+  }, [currentSessionId]);
+
+  // M2 T2.4：监听 AT_SELECTION_DELIVER 消息（background 转发的划词素材）
+  // D22：去重逻辑——新卡片与最近卡片（5秒内、同一URL）文本有包含关系时更新而非新增
+  useEffect(() => {
+    const listener = (message: unknown) => {
+      const msg = message as { type?: string; payload?: SelectionSendPayload };
+      if (msg.type !== 'AT_SELECTION_DELIVER' || !msg.payload) return;
+
+      const payload = msg.payload;
+      const newText = payload.text.trim();
+      const newUrl = payload.url ?? '';
+      const now = Date.now();
+
+      setMaterialCards((prev) => {
+        // 查找最近一张可合并的卡片：5秒内创建、同一URL、文本有包含关系
+        const mergeCandidate = prev.find((card) => {
+          if (now - card.createdAt > 5000) return false;
+          if (card.url !== newUrl) return false;
+          const oldText = card.text.trim();
+          if (!oldText || !newText) return false;
+          // 包含关系：新文本是旧文本的子串，或旧文本是新文本的子串
+          // 且较短文本长度至少为较长文本的 30%（避免完全不相关的短文本误合并）
+          const shorter = oldText.length < newText.length ? oldText : newText;
+          const longer = oldText.length < newText.length ? newText : oldText;
+          return longer.includes(shorter) && shorter.length >= longer.length * 0.3;
+        });
+
+        if (mergeCandidate) {
+          // 更新已有卡片：用新选区替换旧选区（新选区通常更完整/更准确）
+          return prev.map((card) =>
+            card.id === mergeCandidate.id
+              ? {
+                  ...card,
+                  text: payload.text,
+                  contextData: payload.contextData,
+                  createdAt: now, // 更新时间戳，便于后续连续划词继续合并
+                }
+              : card,
+          );
+        }
+
+        // 无可合并卡片，创建新卡片
+        const newCard: MaterialCard = {
+          id: generateId(),
+          text: payload.text,
+          title: payload.title ?? '',
+          url: newUrl,
+          source: payload.source,
+          contextScope: uiPrefs.defaultContextScope,
+          contextData: payload.contextData,
+          adopted: true, // D18：创建后默认已采用
+          createdAt: now,
+        };
+        return [...prev, newCard];
+      });
+    };
+
+    browser.runtime.onMessage.addListener(listener);
+    return () => browser.runtime.onMessage.removeListener(listener);
+  }, [uiPrefs.defaultContextScope]);
 
   const activeConfig = apiConfigs.find((c) => c.id === activeApiConfigId) ?? null;
   const currentSession = sessions.find((s) => s.id === currentSessionId) ?? null;
@@ -92,12 +178,20 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
 
   /**
    * 发送消息。
+   *
+   * D19：如果有已采用的素材卡片，发送时自动组装卡片+用户输入一起发给 LLM。
+   * 组装后清除已参与发送的卡片。
    */
   const handleSend = useCallback(
     async (text: string) => {
       if (sendDisabled || streaming) return;
       setError(null);
-      lastUserMessageRef.current = text;
+
+      // D19：筛选已采用的素材卡片，组装最终 prompt
+      const adoptedCards = materialCards.filter((c) => c.adopted);
+      const finalText = adoptedCards.length > 0 ? buildFinalUserPrompt(text, adoptedCards) : text;
+
+      lastUserMessageRef.current = finalText;
 
       try {
         const session = ensureSession();
@@ -109,7 +203,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         const userMsg: ChatMessage = {
           id: generateId(),
           role: 'user',
-          content: text,
+          content: finalText,
           createdAt: now,
         };
         const assistantMsg: ChatMessage = {
@@ -125,6 +219,12 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         updateSessionMessages(session.id, newMessages, title, session.roleId);
         setStreamingMessageId(assistantMsg.id);
         setStreaming(true);
+
+        // D19：发送后清除已参与发送的素材卡片（已采用的都已组装进 prompt）
+        if (adoptedCards.length > 0) {
+          const adoptedIds = new Set(adoptedCards.map((c) => c.id));
+          setMaterialCards((prev) => prev.filter((c) => !adoptedIds.has(c.id)));
+        }
 
         // 历史消息（不含刚添加的 user 和 assistant）
         const history = session.messages;
@@ -190,6 +290,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
       uiPrefs.baseDirectiveEnabled,
       updateSessionMessages,
       setSessions,
+      materialCards,
     ],
   );
 
@@ -213,6 +314,29 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
     }
   }, [handleSend]);
 
+  // ── M2 T2.4：素材卡片操作（D18/D19：默认已采用，发送时自动组装） ──
+
+  /** 移除单张卡片（不参与本次发送的 prompt 组装） */
+  const handleRemoveCard = useCallback((cardId: string) => {
+    setMaterialCards((prev) => prev.filter((c) => c.id !== cardId));
+  }, []);
+
+  /** 更新卡片字段 */
+  const handleUpdateCard = useCallback((cardId: string, updates: Partial<MaterialCard>) => {
+    setMaterialCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, ...updates } : c)));
+  }, []);
+
+  /** 全部移除 */
+  const handleRemoveAll = useCallback(() => {
+    setMaterialCards([]);
+  }, []);
+
+  /** 切换到新会话（D7） */
+  const handleSwitchToNewSession = useCallback(() => {
+    onSessionChange(''); // 空字符串表示新建会话（ensureSession 会创建）
+    setMaterialTarget({ sessionId: null, sessionName: '新会话' });
+  }, [onSessionChange]);
+
   return (
     <div className="flex h-full flex-col">
       <MessageList
@@ -223,6 +347,15 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         showSetupGuide={apiConfigs.length === 0}
         onNavigateToSettings={onNavigateToSettings}
       />
+      {/* M2 T2.4：素材卡片列表（在消息列表和 token 状态条之间） */}
+      <MaterialCardList
+        cards={materialCards}
+        target={materialTarget}
+        onSwitchToNewSession={handleSwitchToNewSession}
+        onRemove={handleRemoveCard}
+        onUpdate={handleUpdateCard}
+        onRemoveAll={handleRemoveAll}
+      />
       <TokenStatusBar
         used={contextUsed}
         limit={contextLimit}
@@ -230,6 +363,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         estimated
       />
       <Composer
+        ref={composerRef}
         onSend={handleSend}
         onStop={handleStop}
         streaming={streaming}

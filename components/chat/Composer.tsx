@@ -1,9 +1,23 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 /**
- * 输入框组件（spec M1 T1.5）。
+ * 输入框组件（spec M1 T1.5，M2 T2.4 扩展）。
  * Enter 发送，Shift+Enter 换行；流式中显示停止按钮。
+ *
+ * M2 扩展：通过 ref 暴露 setText/appendText 方法，供素材卡片"采用"时填入。
  */
+
+export interface ComposerHandle {
+  /** 设置输入框文本（覆盖） */
+  setText: (text: string) => void;
+  /** 追加文本到输入框（换行分隔） */
+  appendText: (text: string) => void;
+  /** 获取当前输入框文本 */
+  getText: () => string;
+  /** 聚焦输入框 */
+  focus: () => void;
+}
+
 interface Props {
   onSend: (text: string) => void;
   onStop: () => void;
@@ -15,9 +29,24 @@ interface Props {
   disabledReason?: string;
 }
 
-export function Composer({ onSend, onStop, streaming, disabled, disabledReason }: Props) {
-  const [text, setText] = useState('');
+export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
+  { onSend, onStop, streaming, disabled, disabledReason },
+  ref,
+) {
+  const [text, setTextState] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 暴露给父组件的方法
+  useImperativeHandle(ref, () => ({
+    setText: (newText: string) => {
+      setTextState(newText);
+    },
+    appendText: (newText: string) => {
+      setTextState((prev) => (prev ? `${prev}\n\n${newText}` : newText));
+    },
+    getText: () => text,
+    focus: () => textareaRef.current?.focus(),
+  }));
 
   // 自动调整高度
   useEffect(() => {
@@ -32,7 +61,7 @@ export function Composer({ onSend, onStop, streaming, disabled, disabledReason }
     const trimmed = text.trim();
     if (!trimmed || streaming || disabled) return;
     onSend(trimmed);
-    setText('');
+    setTextState('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -51,7 +80,7 @@ export function Composer({ onSend, onStop, streaming, disabled, disabledReason }
         <textarea
           ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => setTextState(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={disabled ? '输入消息...' : '输入消息...（Enter 发送，Shift+Enter 换行）'}
           disabled={disabled || streaming}
@@ -77,4 +106,4 @@ export function Composer({ onSend, onStop, streaming, disabled, disabledReason }
       </div>
     </div>
   );
-}
+});

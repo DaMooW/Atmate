@@ -10,7 +10,7 @@ import type { AppStorageState, UiPrefs } from './types';
 /** 默认 UI 偏好 */
 export const DEFAULT_UI_PREFS: UiPrefs = {
   baseDirectiveEnabled: true,
-  defaultContextScope: 'selection',
+  defaultContextScope: 'containing-paragraph',
   locale: 'zh-CN',
 };
 
