@@ -7,10 +7,10 @@
 
 | 命令 | 预期 | 结果 |
 |---|---|---|
-| `pnpm typecheck`（tsc --noEmit，strict） | 0 错误 | ⬜ 待执行 |
-| `pnpm lint`（eslint + prettier --check） | 0 违例 | ⬜ 待执行 |
-| `pnpm test`（vitest run） | 全部用例通过；`passWithNoTests` 已关闭 | ⬜ 待执行 |
-| `pnpm build` | 构建成功，产物 `dist/chrome-mv3` | ⬜ 待执行 |
+| `pnpm typecheck`（tsc --noEmit，strict） | 0 错误 | ✅ 通过（0 错误） |
+| `pnpm lint`（eslint + prettier --check） | 0 违例 | ✅ 通过（0 违例） |
+| `pnpm test`（vitest run） | 全部用例通过；`passWithNoTests` 已关闭 | ✅ 通过（374 用例全绿，30 test files） |
+| `pnpm build` | 构建成功，产物 `dist/chrome-mv3` | ✅ 通过（607 kB，content.js 43.81 kB） |
 
 ### 1.1 测试覆盖要求（roadmap §1 DoD 强制）
 
@@ -171,3 +171,16 @@
 | 5 站点全覆盖 | roadmap 验收要求 5 个风格迥异站点，验收时至少覆盖 3 个，剩余后续补验 | ⬜ 待补 |
 | 跨 iframe 选区 | 本里程碑不处理跨 iframe，标注为已知限制 | ⬜ 已知限制 |
 | readability 在各类站点的提取率 | 统计常见站点提取成功率，失败率高的站点考虑优化 | ⬜ 后续观察 |
+
+## 7. 实现状态（2026-09-15）
+
+**自动化门禁**：✅ 全部通过（typecheck 0 错误 / lint 0 违例 / 374 tests 全绿 / build 607 kB）
+
+**代码实现**：✅ T2.1–T2.7 全部完成并提交（8 个 commits）
+
+**人工验收**：⬜ 待用户在真实浏览器中验证（见 §2 人工验收清单与 §4 复现步骤）
+
+**已知限制**：
+- D17：多窗口边缘情况暂不处理（sidepanel 状态按 port 连接检测，多窗口时可能出现状态不一致）
+- 跨 iframe 选区不处理（content script 不注入 iframe）
+- 人工验收需用户在 Chrome 中加载 `dist/chrome-mv3` 后按 §4 步骤走查

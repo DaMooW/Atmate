@@ -75,13 +75,13 @@
 
 **范围**：FR-2.1/2.2、FR-2.5（网页侧）、FR-7.1/7.2。content script 上线，打通产品灵魂链路。
 
-- [ ] T2.1 content script：selectionchange 去抖；选区有效性判定（可编辑元素/输入框内选区不弹浮层）；**单测（选区判定纯函数：输入框内/可编辑元素/普通段落/空选区）**
-- [ ] T2.2 浮动按钮：Shadow DOM、跟随选区定位、防溢出；点击 → sidePanel.open + 消息携带 {text, title, url}
-- [ ] T2.3 右键菜单“发送选中内容到 AI 侧边栏”（selection 上下文）
-- [ ] T2.4 面板接收：素材卡片（来源角标 + 原文可编辑 + 补充输入 + 采用/丢弃）；落点定案（2026-09-13）：默认进当前激活会话——卡片顶部常显"将发送至：<会话名>"并支持一键转新会话；无激活会话则直接新建，不弹确认
-- [ ] T2.5 消息链路容错：面板未开时点击（冷启动竞态）、同 Tab 重复发送、超长选区（> N 字提示截断）
-- [ ] T2.6 上下文供给·网页侧（FR-2.5）：仅选区 / ±相邻段落 / 附整页正文三档采集（tech §8.2）；素材卡片分栏展示；readability 失败降级显著标注；token 预览联动（FR-5）；**单测（三档组装纯函数 + 截断边界 + 失败降级标注）**
-- [ ] T2.7 spec `specs/M2-selection.md` 归档
+- [x] T2.1 content script：selectionchange 去抖；选区有效性判定（可编辑元素/输入框内选区不弹浮层）；**单测（选区判定纯函数：输入框内/可编辑元素/普通段落/空选区）**
+- [x] T2.2 浮动按钮：Shadow DOM、跟随选区定位、防溢出；点击 → sidePanel.open + 消息携带 {text, title, url}
+- [x] T2.3 右键菜单“发送选中内容到 AI 侧边栏”（selection 上下文）
+- [x] T2.4 面板接收：素材卡片（来源角标 + 原文可编辑 + 补充输入 + 采用/丢弃）；落点定案（2026-09-13）：默认进当前激活会话——卡片顶部常显"将发送至：<会话名>"并支持一键转新会话；无激活会话则直接新建，不弹确认
+- [x] T2.5 消息链路容错：面板未开时点击（冷启动竞态）、同 Tab 重复发送、超长选区（> N 字提示截断）
+- [x] T2.6 上下文供给·网页侧（FR-2.5）：仅选区 / ±相邻段落 / 附整页正文三档采集（tech §8.2）；素材卡片分栏展示；readability 失败降级显著标注；token 预览联动（FR-5）；**单测（三档组装纯函数 + 截断边界 + 失败降级标注）**
+- [x] T2.7 spec `specs/M2-selection.md` 归档
 
 **验收**：
 - [ ] 在 5 个风格迥异的站点（含 GitHub、带 Dark 主题站、Google Docs 之外的富文本编辑器）划词，浮层定位正确、不受站点样式影响
@@ -191,3 +191,4 @@
 | 2026-09-14 | M1 | 侧边栏对话 MVP 交付（T1.1–T1.10 全绿）：core 域层（types/id/schema/defaults/modelCapabilities/contextLimits/validation/thinking/builtinRoles/directive/systemPrompt/tokens/session）+ storage 同步层（zustand + onChanged 回流 + 默认角色 seed）+ infra/llm 客户端（requestBuilder/sseParser/errors/client，含 collectUsage 探测降级）+ UI（设置视图 API配置/角色/偏好三 tab、对话视图 MessageList/MessageItem/Composer/ChatView、TokenStatusBar、SessionList）+ prompts 外置（roles/*.md + directive-v1.md，?raw 导入）。测试 262 例全绿（L1 core ~60% + L2 infra ~20%），构建 544 kB。关键决策：思维强度用模型能力预填表（非动态 API）、默认角色 seed 后可编辑删除、prompt 全部外置不内嵌、token 估算用 ceil(字符数/3.2) 混合系数。spec：`specs/20260914-m1-sidepanel-chat/` |
 | 2026-09-14 | M1 | 验收缺陷修复：storage 回流把自身写入的**滞后回声**当外部变更套用，导致流式输出丢字（服务端 793 字 → 落库 550 字，代码块未渲染）。改为写入登记稳定指纹（键序规范化）、回流命中即忽略（ADR-010）；L2 测试 +6 例（268 全绿）；真机复验落库与服务端**逐字一致**（634 字同指纹、含代码围栏与 usage）。spec：`specs/20260914-m1-fix-storage-echo/` |
 | 2026-09-15 | M1 | 验收修订收尾（D-012/D-013）：① 会话标题改由 `generateSessionTitle` 生成，且流式期间以 store 为准、不再被重建会话对象覆盖（修复"标题全是新对话"）；② 不支持思维链的模型，思维强度开关**强制置灰**、不可手动覆盖；③ 新增第五个默认角色"在伴 Atmate"（`prompts/roles/atmate.md`，产品介绍设定），空对话直接发送默认使用它（`DEFAULT_ROLE_ID`）。测试 273 全绿。 |
+| 2026-09-15 | M2 | 划词集成里程碑交付（T2.1–T2.7 全绿）：content script 选区监听（200ms 去抖 + 有效性判定）+ 浮动按钮（Shadow DOM 隔离 + 定位防溢出）+ 右键菜单（contextMenus 权限）+ 素材卡片 UI（来源角标/原文编辑/档位切换/补充说明/采用丢弃/落点提示）+ 上下文供给三档（仅选区/±相邻段落/整页正文 @mozilla/readability）+ 消息链路分流（D16：侧边栏已打开→零点击直接投递/未打开→浮动按钮暂存）+ 容错场景（冷启动竞态/重复发送/超长选区不截断）。核心设计决策：D2 浮动按钮=选区右下角图标、D3 素材卡片=暂存+显式采用丢弃（多卡片积累）、D4 默认上下文=±相邻段落、D5 prompt 用【用户选中的内容】等标记分界、D6 超长选区不截断仅 token 预警、D7 素材落点默认当前会话+一键转新、D14 新增 contextMenus 权限、D16 侧边栏状态感知分流、D17 多窗口边缘情况暂不处理。测试 374 例全绿（L1 core 14+8+12+11=45 / L2 infra 7+24+8+7=46 / L3 组件 10 / 其他 273），构建 607 kB（content.js 43.81 kB）。关键技术发现：fake-browser 未实现 runtime.onConnect/contextMenus（需手动 mock）、WXT entrypoints 的 browser 全局注入需 vi.stubGlobal、@mozilla/readability 动态 import 增加 content.js 体积至 43.8 kB。spec：`specs/20260915-m2-selection-integration/` |
