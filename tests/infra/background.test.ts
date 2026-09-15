@@ -15,6 +15,12 @@ type Tab = Parameters<typeof fakeBrowser.action.onClicked.trigger>[0];
 beforeEach(() => {
   vi.resetModules(); // 清除动态 import 缓存，确保每次测试重新执行 background.ts 顶层代码
   fakeBrowser.reset();
+  // fake-browser 未实现 runtime.onConnect，手动 mock（M2 initPanelState 需要）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (fakeBrowser.runtime as any).onConnect = {
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+  };
   vi.stubGlobal('browser', fakeBrowser);
   vi.stubGlobal('defineBackground', (fn: () => void) => fn());
   vi.restoreAllMocks();
