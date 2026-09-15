@@ -102,7 +102,7 @@ export interface Session {
 
 // ── UI 偏好 ───────────────────────────────────────────────
 
-export type ContextScope = 'selection' | 'nearby' | 'page' | 'pdf-full';
+export type ContextScope = 'selection' | 'containing-paragraph' | 'nearby' | 'page' | 'pdf-full';
 export type Locale = 'zh-CN' | 'en-US';
 
 export interface UiPrefs {

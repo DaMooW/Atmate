@@ -3,7 +3,7 @@ import { MessageList } from './MessageList';
 import { Composer, type ComposerHandle } from './Composer';
 import { TokenStatusBar } from './TokenStatusBar';
 import { MaterialCardList } from './MaterialCardList';
-import { buildUserPrompt } from './promptBuilder';
+import { buildFinalUserPrompt } from './promptBuilder';
 import type { MaterialCard, MaterialTarget } from './materialTypes';
 import { useStorageStore } from '../../infra/storage/store';
 import { streamChat } from '../../infra/llm/client';
@@ -78,6 +78,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         contextScope: uiPrefs.defaultContextScope,
         contextData: payload.contextData,
         userNote: '',
+        adopted: true, // D18：创建后默认已采用
         createdAt: Date.now(),
       };
       setMaterialCards((prev) => [...prev, newCard]);
@@ -143,12 +144,20 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
 
   /**
    * 发送消息。
+   *
+   * D19：如果有已采用的素材卡片，发送时自动组装卡片+用户输入一起发给 LLM。
+   * 组装后清除已参与发送的卡片。
    */
   const handleSend = useCallback(
     async (text: string) => {
       if (sendDisabled || streaming) return;
       setError(null);
-      lastUserMessageRef.current = text;
+
+      // D19：筛选已采用的素材卡片，组装最终 prompt
+      const adoptedCards = materialCards.filter((c) => c.adopted);
+      const finalText = adoptedCards.length > 0 ? buildFinalUserPrompt(text, adoptedCards) : text;
+
+      lastUserMessageRef.current = finalText;
 
       try {
         const session = ensureSession();
@@ -160,7 +169,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         const userMsg: ChatMessage = {
           id: generateId(),
           role: 'user',
-          content: text,
+          content: finalText,
           createdAt: now,
         };
         const assistantMsg: ChatMessage = {
@@ -176,6 +185,12 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         updateSessionMessages(session.id, newMessages, title, session.roleId);
         setStreamingMessageId(assistantMsg.id);
         setStreaming(true);
+
+        // D19：发送后清除已参与发送的素材卡片（已采用的都已组装进 prompt）
+        if (adoptedCards.length > 0) {
+          const adoptedIds = new Set(adoptedCards.map((c) => c.id));
+          setMaterialCards((prev) => prev.filter((c) => !adoptedIds.has(c.id)));
+        }
 
         // 历史消息（不含刚添加的 user 和 assistant）
         const history = session.messages;
@@ -241,6 +256,7 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
       uiPrefs.baseDirectiveEnabled,
       updateSessionMessages,
       setSessions,
+      materialCards,
     ],
   );
 
@@ -264,25 +280,10 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
     }
   }, [handleSend]);
 
-  // ── M2 T2.4：素材卡片操作 ──
+  // ── M2 T2.4：素材卡片操作（D18/D19：默认已采用，发送时自动组装） ──
 
-  /** 采用单张卡片：组装 prompt 填入输入框，移除卡片 */
-  const handleAdoptCard = useCallback((card: MaterialCard) => {
-    const prompt = buildUserPrompt({
-      selectedText: card.text,
-      contextScope: card.contextScope,
-      previousParagraph: card.contextData?.beforeParagraph,
-      nextParagraph: card.contextData?.afterParagraph,
-      pageContent: card.contextData?.fullPage,
-      userNote: card.userNote,
-    });
-    composerRef.current?.appendText(prompt);
-    setMaterialCards((prev) => prev.filter((c) => c.id !== card.id));
-    composerRef.current?.focus();
-  }, []);
-
-  /** 丢弃单张卡片 */
-  const handleDiscardCard = useCallback((cardId: string) => {
+  /** 移除单张卡片（不参与本次发送的 prompt 组装） */
+  const handleRemoveCard = useCallback((cardId: string) => {
     setMaterialCards((prev) => prev.filter((c) => c.id !== cardId));
   }, []);
 
@@ -291,25 +292,8 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
     setMaterialCards((prev) => prev.map((c) => (c.id === cardId ? { ...c, ...updates } : c)));
   }, []);
 
-  /** 全部采用 */
-  const handleAdoptAll = useCallback(() => {
-    materialCards.forEach((card) => {
-      const prompt = buildUserPrompt({
-        selectedText: card.text,
-        contextScope: card.contextScope,
-        previousParagraph: card.contextData?.beforeParagraph,
-        nextParagraph: card.contextData?.afterParagraph,
-        pageContent: card.contextData?.fullPage,
-        userNote: card.userNote,
-      });
-      composerRef.current?.appendText(prompt);
-    });
-    setMaterialCards([]);
-    composerRef.current?.focus();
-  }, [materialCards]);
-
-  /** 全部丢弃 */
-  const handleDiscardAll = useCallback(() => {
+  /** 全部移除 */
+  const handleRemoveAll = useCallback(() => {
     setMaterialCards([]);
   }, []);
 
@@ -334,11 +318,9 @@ export function ChatView({ currentSessionId, onSessionChange, onNavigateToSettin
         cards={materialCards}
         target={materialTarget}
         onSwitchToNewSession={handleSwitchToNewSession}
-        onAdopt={handleAdoptCard}
-        onDiscard={handleDiscardCard}
+        onRemove={handleRemoveCard}
         onUpdate={handleUpdateCard}
-        onAdoptAll={handleAdoptAll}
-        onDiscardAll={handleDiscardAll}
+        onRemoveAll={handleRemoveAll}
       />
       <TokenStatusBar
         used={contextUsed}

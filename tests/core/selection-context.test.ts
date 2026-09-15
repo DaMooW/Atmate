@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { findNearestBlockAncestor, getNearbyParagraphs } from '../../core/selection/context';
+import {
+  findNearestBlockAncestor,
+  getNearbyParagraphs,
+  getContainingParagraph,
+} from '../../core/selection/context';
 
 /**
- * L1 单测：上下文采集纯函数（M2 T2.6，D13）。
+ * L1 单测：上下文采集纯函数（M2 T2.6，D13/D20）。
  *
- * 覆盖：findNearestBlockAncestor、getNearbyParagraphs（前后段落）。
+ * 覆盖：findNearestBlockAncestor、getNearbyParagraphs（前后段落）、
+ * getContainingParagraph（包含选中词的整段，D20 默认档位）。
  */
 
 beforeEach(() => {
@@ -157,5 +162,101 @@ describe('core/selection/context · getNearbyParagraphs', () => {
     const result = getNearbyParagraphs(selection);
     expect(result.beforeParagraph).toBe('前一段落');
     expect(result.afterParagraph).toBe('后一段落');
+  });
+});
+
+describe('core/selection/context · getContainingParagraph（D20）', () => {
+  it('采集包含选中文本的整段文本', () => {
+    document.body.innerHTML = `
+      <div>
+        <p>前一段落</p>
+        <p><span>This domain is for use in documentation examples.</span></p>
+        <p>后一段落</p>
+      </div>
+    `;
+    const span = document.querySelector('span')!;
+    const range = document.createRange();
+    // 只选中 "documentation" 这个词
+    // "This domain is for use in " 长度 = 5+7+3+4+4+3 = 26
+    // "documentation" 长度 = 13，结束位置 = 26+13 = 39
+    const textNode = span.firstChild!;
+    range.setStart(textNode, 26);
+    range.setEnd(textNode, 39);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const result = getContainingParagraph(selection);
+    expect(result).toBe('This domain is for use in documentation examples.');
+    expect(selection.toString()).toBe('documentation');
+  });
+
+  it('选区在 div 中时返回 div 的完整文本', () => {
+    document.body.innerHTML = `
+      <div>
+        <span>选中的文本</span>
+        <span>其他内容</span>
+      </div>
+    `;
+    const span = document.querySelector('span')!;
+    const range = document.createRange();
+    range.selectNodeContents(span);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const result = getContainingParagraph(selection);
+    expect(result).toBe('选中的文本 其他内容');
+  });
+
+  it('没有块级祖先时返回选区文本本身', () => {
+    document.body.innerHTML = '<span><b>选中的文本</b></span>';
+    const b = document.querySelector('b')!;
+    const range = document.createRange();
+    range.selectNodeContents(b);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const result = getContainingParagraph(selection);
+    expect(result).toBe('选中的文本');
+  });
+
+  it('空选区返回空字符串', () => {
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    const result = getContainingParagraph(selection);
+    expect(result).toBe('');
+  });
+
+  it('返回的文本会被 trim', () => {
+    document.body.innerHTML = '<p>  包含空格的段落  </p>';
+    const p = document.querySelector('p')!;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const result = getContainingParagraph(selection);
+    expect(result).toBe('包含空格的段落');
+  });
+
+  it('选区跨越多个元素时返回 commonAncestor 的块级祖先文本', () => {
+    document.body.innerHTML = `
+      <p>
+        <span>第一部分</span>
+        <span>第二部分</span>
+      </p>
+    `;
+    const p = document.querySelector('p')!;
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const result = getContainingParagraph(selection);
+    expect(result).toBe('第一部分 第二部分');
   });
 });

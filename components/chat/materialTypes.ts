@@ -1,10 +1,10 @@
 /**
- * 素材卡片类型定义（M2 T2.4，D3/D7）。
+ * 素材卡片类型定义（M2 T2.4，D3/D7/D18/D19）。
  *
  * 素材卡片是划词内容进入对话前的暂存态：
  * - 用户可以编辑原文、补充说明、切换上下文档位
- * - 显式"采用"后才填入输入框并发送
- * - "丢弃"则移除卡片
+ * - 创建后默认已采用（D18），发送时自动组装进 prompt（D19）
+ * - "移除"则不参与本次发送
  * - 支持多卡片积累
  */
 
@@ -23,12 +23,14 @@ export interface MaterialCard {
   url: string;
   /** 素材来源（浮动按钮 / 右键菜单 / 自动填充） */
   source: MaterialSource;
-  /** 上下文档位（默认 nearby，D4） */
+  /** 上下文档位（默认 containing-paragraph，D20） */
   contextScope: ContextScope;
   /** 上下文数据（T2.6 实现后填充） */
   contextData?: ContextData;
   /** 用户补充说明 */
   userNote: string;
+  /** 是否已采用（D18：创建后默认 true；发送时已采用的卡片会自动组装进 prompt） */
+  adopted: boolean;
   /** 创建时间 */
   createdAt: number;
 }

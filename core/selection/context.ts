@@ -1,10 +1,11 @@
 /**
- * 上下文采集纯函数（M2 T2.6，D4/D13）。
+ * 上下文采集纯函数（M2 T2.6，D4/D13/D20）。
  *
- * ±相邻段落算法（D13）：
- * 1. 从选区的 commonAncestorContainer 向上找到最近的块级元素
- * 2. 取前一个和后一个同级块级元素的文本内容
- * 3. 如果没有同级块级元素，则向上找父级块级元素的兄弟
+ * 档位：
+ * - selection：仅选区文本
+ * - containing-paragraph：包含选中文本的整段（D20，默认）
+ * - nearby：±相邻段落（D13）
+ * - page：整页正文（@mozilla/readability）
  *
  * 纯函数（接收 DOM 节点，返回文本），可在 L1 单测中用 jsdom 覆盖。
  */
@@ -125,4 +126,37 @@ export function getNearbyParagraphs(selection: Selection): NearbyParagraphs {
     beforeParagraph: prevBlock?.textContent?.trim() ?? '',
     afterParagraph: nextBlock?.textContent?.trim() ?? '',
   };
+}
+
+/**
+ * 采集包含选中文本的整段（D20 算法，默认档位）。
+ *
+ * 算法：
+ * 1. 从选区的 commonAncestorContainer 向上找到最近的块级元素
+ * 2. 返回该块级元素的完整文本内容（trim）
+ * 3. 如果没有找到块级祖先，则返回选区文本本身
+ *
+ * 与 nearby 的区别：nearby 取前后相邻段落，不包含选区所在段落本身；
+ * containing-paragraph 取选区所在段落的完整文本，包含选中文本及其所在段落的全部内容。
+ *
+ * @param selection - 当前 Selection 对象
+ * @returns 包含选中文本的整段文本
+ */
+export function getContainingParagraph(selection: Selection): string {
+  if (selection.rangeCount === 0) {
+    return '';
+  }
+
+  const range = selection.getRangeAt(0);
+  const blockAncestor = findNearestBlockAncestor(range.commonAncestorContainer);
+
+  if (!blockAncestor) {
+    // 没有找到块级祖先，返回选区文本本身
+    return selection.toString().trim();
+  }
+
+  const rawText = blockAncestor.textContent?.trim() ?? '';
+  // 规范化空白：将连续的空白字符（换行、缩进、多个空格）替换为单个空格
+  // 避免 HTML 源码中的缩进/换行污染 prompt 上下文
+  return rawText.replace(/\s+/g, ' ');
 }

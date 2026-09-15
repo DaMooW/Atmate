@@ -58,18 +58,22 @@ export async function extractPageContent(doc: Document = document): Promise<Page
  * 构建完整的 ContextData（根据上下文档位采集）。
  *
  * @param selection - 当前 Selection
- * @param contextScope - 上下文档位（selection / nearby / page）
+ * @param contextScope - 上下文档位（selection / containing-paragraph / nearby / page）
  * @returns ContextData
  */
 export async function buildContextData(
   selection: Selection,
-  contextScope: 'selection' | 'nearby' | 'page',
+  contextScope: 'selection' | 'containing-paragraph' | 'nearby' | 'page',
 ): Promise<ContextData> {
   const base: ContextData = {
     selection: selection.toString(),
   };
 
-  if (contextScope === 'nearby') {
+  if (contextScope === 'containing-paragraph') {
+    // 动态 import 避免循环依赖
+    const { getContainingParagraph } = await import('~/core/selection/context');
+    base.containingParagraph = getContainingParagraph(selection);
+  } else if (contextScope === 'nearby') {
     // 动态 import 避免循环依赖
     const { getNearbyParagraphs } = await import('~/core/selection/context');
     const nearby = getNearbyParagraphs(selection);

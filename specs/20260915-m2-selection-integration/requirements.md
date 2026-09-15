@@ -68,6 +68,10 @@ M2 的目标是上线 **content script**，把划词链路从 0 到 1 跑通：�
 | D15 | **测试按 techniqueStack §10 四层金字塔执行**；每个 T*.x 对应测试写完且 `pnpm test` 全绿才算完成；T2.1（选区判定纯函数）、T2.6（三档组装纯函数+截断边界+失败降级标注）必须有 L1 单测；content script 行为用 L2（vi.stubGlobal + fakeBrowser） | roadmap §1 DoD（v0.5）；techniqueStack §10 |
 | D16 | **侧边栏状态感知分流**：划词后 content script 将选区发送给 background，background 根据侧边栏是否已打开决定行为——① 侧边栏**已打开**：直接转发给 sidepanel 创建素材卡片（零点击，划词即暂存）；② 侧边栏**未打开**：回复 content script 显示浮动按钮，用户点击后才打开侧边栏并填入。background 用 long-lived port（`chrome.runtime.connect`）维护 `panelOpen` 状态，sidepanel 连接时置 true、断开时置 false | 用户反馈（2026-09-15）：已打开对话时直接填入素材卡片即可，不需要浮动按钮；减少已打开用户的操作步骤 |
 | D17 | **多窗口边缘情况暂不处理**：`panelOpen` 为全局状态（不区分窗口），若窗口 A 打开了侧边栏、用户在窗口 B 划词，素材会出现在窗口 A 的侧边栏。M2 标注为已知限制，后续可通过 payload 携带 `windowId` + sidepanel 过滤解决 | 实现复杂度权衡；大多数用户单窗口使用；M2 优先保证主路径体验 |
+| D18 | **划词卡片默认已采用**：素材卡片创建后立即标记为 `adopted: true`，无需用户手动点击"采用"。卡片视觉上显示"已采用"绿色标识，移除"采用"按钮，"丢弃"改为"移除" | 用户反馈（2026-09-15）：划词后默认就是采用的，减少操作步骤；用户划词的意图就是要使用这段素材 |
+| D19 | **采用≠填入输入框，发送时自动组装**：已采用的素材卡片不将内容填入 Composer 输入框，而是当用户点击发送时，Atmate 自动将已采用的卡片内容与用户输入组装成完整 prompt 发给 LLM。发送后清除已参与发送的卡片。Composer 的 `appendText` 方法保留但不再被素材卡片使用 | 用户反馈（2026-09-15）：采用不是填入输入框，而是发送时自动组装；保持输入框干净，用户只输入自己的需求 |
+| D20 | **上下文默认档位=包含选中词的整段**：新增 `ContextScope = 'containing-paragraph'` 档位，采集选中文本所在的最近块级元素的完整文本内容（规范化空白），设为默认档位。原默认 `'selection'` 降级为可选档位。用户示例：划中 "documentation"，上下文自动包含 "This domain is for use in documentation examples without needing permission." 整段 | 用户反馈（2026-09-15）：上下文默认选择包含这个单词的这一段话；翻译/解读单个词时需要所在段落的语境，比±相邻段落更精准 |
+| D21 | **Prompt 组装格式更丰富精准鲁棒**：重写 `buildFinalUserPrompt`，格式为结构化分段：【用户需求】{用户输入} + 【素材】{【用户选中的原文】+【相关上下文（按档位标注）】+【来源】{标题+URL}+【补充说明】}。设计原则：结构化分段易解析、选中原文与上下文明确区分、来源信息完整可溯源、空字段省略不输出空标签、多卡片按创建时间排序依次输出、用户输入为空时输出默认提示 | 用户反馈（2026-09-15）：示例格式「用户需求：请翻译这个词：{documentation}」+「相关内容如下：{上下文}」，但要求实际更丰富、精准、鲁棒、健壮 |
 
 ## 4. 上下文与约束（Context & Constraints）
 
@@ -79,7 +83,7 @@ M2 的目标是上线 **content script**，把划词链路从 0 到 1 跑通：�
   ```ts
   interface UiPrefs {
     baseDirectiveEnabled: boolean;   // M1 已有
-    defaultContextScope: 'selection' | 'nearby' | 'page';  // 新增，默认 'nearby'（D4）
+    defaultContextScope: 'selection' | 'containing-paragraph' | 'nearby' | 'page';  // D20：默认 'containing-paragraph'
     locale: 'zh-CN';                  // M1 已有
   }
   ```

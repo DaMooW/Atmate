@@ -3,25 +3,24 @@ import type { MaterialCard as MaterialCardType } from './materialTypes';
 import { estimateTextTokens } from './promptBuilder';
 
 /**
- * 单张素材卡片（M2 T2.4，D3）。
+ * 单张素材卡片（M2 T2.4，D3/D18/D19/D20）。
  *
  * 功能：
  * - 来源角标（浮动按钮/右键菜单/自动填充）
  * - 页面标题 + URL
  * - 可编辑原文
- * - 上下文档位切换（selection/nearby/page）
+ * - 上下文档位切换（selection/containing-paragraph/nearby/page）
  * - 用户补充说明
  * - token 预览
- * - 采用 / 丢弃
+ * - 已采用状态标识（D18：创建后默认已采用）
+ * - 移除按钮（D19：移除后不参与本次发送的 prompt 组装）
  */
 
 interface Props {
   card: MaterialCardType;
-  /** 采用卡片：将组装后的文本填入输入框 */
-  onAdopt: (card: MaterialCardType) => void;
-  /** 丢弃卡片：从列表中移除 */
-  onDiscard: (cardId: string) => void;
-  /** 更新卡片字段（原文编辑、档位切换、补充说明） */
+  /** 移除卡片：不参与本次发送的 prompt 组装 */
+  onRemove: (cardId: string) => void;
+  /** 更新卡片字段（原文编辑、档位切换、补充说明、采用状态切换） */
   onUpdate: (cardId: string, updates: Partial<MaterialCardType>) => void;
 }
 
@@ -32,14 +31,15 @@ const SOURCE_LABEL: Record<MaterialCardType['source'], string> = {
   'auto-fill': '自动填充',
 };
 
-/** 上下文档位选项 */
+/** 上下文档位选项（D20：默认 containing-paragraph） */
 const CONTEXT_SCOPE_OPTIONS: Array<{ value: MaterialCardType['contextScope']; label: string }> = [
   { value: 'selection', label: '仅选区' },
+  { value: 'containing-paragraph', label: '所在段落' },
   { value: 'nearby', label: '±相邻段落' },
   { value: 'page', label: '整页正文' },
 ];
 
-export function MaterialCard({ card, onAdopt, onDiscard, onUpdate }: Props) {
+export function MaterialCard({ card, onRemove, onUpdate }: Props) {
   const [editing, setEditing] = useState(false);
 
   // 估算 token（原文 + 补充说明）
@@ -47,10 +47,14 @@ export function MaterialCard({ card, onAdopt, onDiscard, onUpdate }: Props) {
 
   return (
     <div className="bg-surface-secondary rounded-lg border border-border p-3">
-      {/* 顶部：来源角标 + 页面信息 + 丢弃按钮 */}
+      {/* 顶部：已采用标识 + 来源角标 + 页面信息 + 移除按钮 */}
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
+            {/* D18：已采用状态标识 */}
+            <span className="rounded bg-success/15 px-1.5 py-0.5 text-xs font-medium text-success">
+              已采用
+            </span>
             <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
               {SOURCE_LABEL[card.source]}
             </span>
@@ -68,10 +72,10 @@ export function MaterialCard({ card, onAdopt, onDiscard, onUpdate }: Props) {
           )}
         </div>
         <button
-          onClick={() => onDiscard(card.id)}
+          onClick={() => onRemove(card.id)}
           className="hover:bg-surface-hover shrink-0 rounded p-1 text-text-muted hover:text-danger"
-          title="丢弃"
-          aria-label="丢弃素材卡片"
+          title="移除（不参与本次发送）"
+          aria-label="移除素材卡片"
         >
           <svg
             width="14"
@@ -109,10 +113,10 @@ export function MaterialCard({ card, onAdopt, onDiscard, onUpdate }: Props) {
         )}
       </div>
 
-      {/* 上下文档位切换 */}
+      {/* 上下文档位切换（D20：默认所在段落） */}
       <div className="mb-2 flex items-center gap-2">
         <span className="text-xs text-text-muted">上下文：</span>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {CONTEXT_SCOPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -140,15 +144,10 @@ export function MaterialCard({ card, onAdopt, onDiscard, onUpdate }: Props) {
         />
       </div>
 
-      {/* 底部：token 预览 + 采用按钮 */}
+      {/* 底部：token 预览 + 发送时自动带入提示（D19） */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-text-muted">约 {estimatedTokens} tokens</span>
-        <button
-          onClick={() => onAdopt(card)}
-          className="rounded bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary/90"
-        >
-          采用
-        </button>
+        <span className="text-xs text-text-muted">发送时自动带入</span>
       </div>
     </div>
   );

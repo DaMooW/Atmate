@@ -121,6 +121,29 @@
 
 **完成判据**：roadmap M2 全部勾选，变更记录已追加，spec 目录状态为已实现；三门禁全绿。
 
+## 8. 交互重构：默认已采用 + 发送时自动组装 + 所在段落上下文（D18-D21）
+
+**目标**：根据用户验收反馈，重构素材卡片交互模型——卡片创建后默认已采用，发送时自动组装卡片+用户输入，上下文默认档位改为包含选中词的整段，prompt 格式更丰富精准鲁棒。
+
+- [x] 8.1 `core/types.ts`：`ContextScope` 新增 `'containing-paragraph'` 档位（D20）
+- [x] 8.2 `core/defaults.ts`：`defaultContextScope` 默认值从 `'selection'` 改为 `'containing-paragraph'`（D20）
+- [x] 8.3 `core/selection/context.ts`：新增 `getContainingParagraph(selection): string` 纯函数——找到选区最近的块级祖先，返回其完整 textContent（trim + 规范化空白 `\s+` → `' '`）；无块级祖先时返回选区文本本身（D20）
+- [x] 8.4 `core/messages.ts`：`ContextData` 新增 `containingParagraph?: string` 字段（D20）
+- [x] 8.5 `entrypoints/content/context/page-content.ts`：`buildContextData` 新增 `containing-paragraph` 档位处理，动态 import `getContainingParagraph`
+- [x] 8.6 `entrypoints/content/messaging/send.ts`：`collectSelectionPayload` 默认 `contextScope` 从 `'nearby'` 改为 `'containing-paragraph'`（D20）
+- [x] 8.7 `components/chat/materialTypes.ts`：`MaterialCard` 新增 `adopted: boolean` 字段（D18）；更新注释说明新交互模型
+- [x] 8.8 `components/chat/promptBuilder.ts`：重写——新增 `buildMaterialPrompt(input)` 组装单张素材片段（【用户选中的原文】+【相关上下文（按档位标注）】+【来源】+【补充说明】）；新增 `buildFinalUserPrompt(userInput, adoptedCards)` 组装最终发送 prompt（【用户需求】+【素材】/【素材 N】）；空字段省略；用户输入为空时输出默认提示；保留 `estimateTextTokens`（D21）
+- [x] 8.9 `components/chat/MaterialCard.tsx`：重构——移除"采用"按钮，"丢弃"改为"移除"（onRemove）；顶部新增"已采用"绿色标识；底部新增"发送时自动带入"提示；上下文档位选项新增"所在段落"（D18/D19/D20）
+- [x] 8.10 `components/chat/MaterialCardList.tsx`：重构——props 从 onAdopt/onDiscard/onAdoptAll/onDiscardAll 改为 onRemove/onRemoveAll；"全部采用"改为"全部移除"（D18/D19）
+- [x] 8.11 `components/chat/ChatView.tsx`：重构——创建卡片时 `adopted: true`（D18）；`handleSend` 发送前筛选 `adopted === true` 的卡片，用 `buildFinalUserPrompt` 组装最终 prompt，发送后清除已参与发送的卡片（D19）；移除 `handleAdoptCard`/`handleAdoptAll`，改为 `handleRemoveCard`/`handleRemoveAll`；import 从 `buildUserPrompt` 改为 `buildFinalUserPrompt`
+- [x] 8.12 **L1 单测**：`prompt-builder.test.ts` 重写——覆盖 `buildMaterialPrompt`（各档位/来源/补充说明/空字段省略/组合场景）+ `buildFinalUserPrompt`（用户输入+单卡片/多卡片/无卡片/空输入/用户示例场景）+ `estimateTextTokens`（D21）
+- [x] 8.13 **L1 单测**：`selection-context.test.ts` 新增 `getContainingParagraph` 测试（7 例：正常采集/div 中/无块级祖先/空选区/trim/跨多元素/documentation 示例场景）（D20）
+- [x] 8.14 **L3 组件测试**：`material-card.test.tsx` 重写——覆盖已采用标识/移除按钮/无采用按钮/发送时自动带入提示/四档位选项/所在段落默认高亮（D18/D19/D20）
+- [x] 8.15 **L1 单测**：`defaults.test.ts` 更新默认 `defaultContextScope` 期望为 `'containing-paragraph'`
+- [x] 8.16 spec 更新：`requirements.md` 新增 D18-D21 决策表 + 更新数据模型；`plan.md` 新增任务组 8；`validation.md` 更新验收标准
+
+**完成判据**：划词后卡片默认已采用（绿色标识），无采用按钮；输入框保持干净不填入卡片内容；点击发送后 prompt 自动组装【用户需求】+【素材】结构化格式；上下文默认包含选中词的整段；393 测试全绿；typecheck/lint/build 全通过。
+
 ---
 
 ## 执行顺序说明

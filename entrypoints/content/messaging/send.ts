@@ -22,13 +22,13 @@ type WebContextScope = Exclude<ContextScope, 'pdf-full'>;
  *
  * @param selection - 当前 Selection 对象
  * @param source - 素材来源（float-button / context-menu / auto-fill）
- * @param contextScope - 上下文档位（默认 nearby，D4）
+ * @param contextScope - 上下文档位（默认 containing-paragraph，D20）
  * @returns 选区消息 payload（包含 contextData）
  */
 export async function collectSelectionPayload(
   selection: Selection,
   source: MaterialSource = 'float-button',
-  contextScope: WebContextScope = 'nearby',
+  contextScope: WebContextScope = 'containing-paragraph',
 ): Promise<SelectionSendPayload> {
   // 根据上下文档位采集 contextData（T2.6）
   const contextData = await buildContextData(selection, contextScope);

@@ -2,12 +2,12 @@ import type { MaterialCard as MaterialCardType, MaterialTarget } from './materia
 import { MaterialCard } from './MaterialCard';
 
 /**
- * 素材卡片列表（M2 T2.4，D3/D7）。
+ * 素材卡片列表（M2 T2.4，D3/D7/D18/D19）。
  *
  * 功能：
  * - 显示多张素材卡片（支持多卡片积累）
  * - 顶部常显"将发送至：<会话名>" + 一键转新会话（D7）
- * - 全部采用 / 全部丢弃
+ * - 全部移除（D18/D19：卡片默认已采用，移除后不参与发送）
  */
 
 interface Props {
@@ -16,27 +16,21 @@ interface Props {
   target: MaterialTarget;
   /** 切换到新会话 */
   onSwitchToNewSession: () => void;
-  /** 采用单张卡片 */
-  onAdopt: (card: MaterialCardType) => void;
-  /** 丢弃单张卡片 */
-  onDiscard: (cardId: string) => void;
+  /** 移除单张卡片 */
+  onRemove: (cardId: string) => void;
   /** 更新卡片字段 */
   onUpdate: (cardId: string, updates: Partial<MaterialCardType>) => void;
-  /** 全部采用 */
-  onAdoptAll: () => void;
-  /** 全部丢弃 */
-  onDiscardAll: () => void;
+  /** 全部移除 */
+  onRemoveAll: () => void;
 }
 
 export function MaterialCardList({
   cards,
   target,
   onSwitchToNewSession,
-  onAdopt,
-  onDiscard,
+  onRemove,
   onUpdate,
-  onAdoptAll,
-  onDiscardAll,
+  onRemoveAll,
 }: Props) {
   if (cards.length === 0) return null;
 
@@ -54,27 +48,16 @@ export function MaterialCardList({
           )}
         </div>
         {cards.length > 1 && (
-          <div className="flex gap-2">
-            <button onClick={onAdoptAll} className="text-xs text-primary hover:underline">
-              全部采用
-            </button>
-            <button onClick={onDiscardAll} className="text-xs text-text-muted hover:text-danger">
-              全部丢弃
-            </button>
-          </div>
+          <button onClick={onRemoveAll} className="text-xs text-text-muted hover:text-danger">
+            全部移除
+          </button>
         )}
       </div>
 
       {/* 卡片列表 */}
       <div className="flex flex-col gap-2">
         {cards.map((card) => (
-          <MaterialCard
-            key={card.id}
-            card={card}
-            onAdopt={onAdopt}
-            onDiscard={onDiscard}
-            onUpdate={onUpdate}
-          />
+          <MaterialCard key={card.id} card={card} onRemove={onRemove} onUpdate={onUpdate} />
         ))}
       </div>
     </div>

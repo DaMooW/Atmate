@@ -23,6 +23,8 @@ export type ContextScope = 'selection' | 'nearby' | 'page';
 export interface ContextData {
   /** 纯选区文本（不可编辑，用于 prompt 标记） */
   selection: string;
+  /** 包含选中文本的整段（containing-paragraph 档，D20） */
+  containingParagraph?: string;
   /** 前一段落（nearby 档） */
   beforeParagraph?: string;
   /** 后一段落（nearby 档） */
